@@ -80,6 +80,7 @@ Browser screenshots/results อยู่ใน client/.ui-artifacts/ ซึ่�
 - GitHub อาจใช้เวลาประมาณ 24 ชั่วโมงเพื่อปรับ Contributors/สถิติหลังเปลี่ยนประวัติ หากยังแสดงชื่อเก่าให้ตรวจ main และรอ Cache อัปเดต
 - สถานะที่เคยระบุว่าเก็บ LICENSE ใน Snapshot เป็นประวัติก่อนคำสั่งลบล่าสุด ให้ยึดคำสั่งและรายการล่าสุดใน WORK_LOG
 - รอบลบ LICENSE ใช้ Commit/Push ปกติ ไม่ Rewrite ประวัติ Git เพิ่ม
+- ลบ LICENSE และส่ง Commit 22e1a1d ขึ้น origin/main สำเร็จแล้ว ตรวจว่าไม่มีไฟล์ทั้งใน Working Tree และต้นไม้ HEAD; บันทึกผลส่งจริงตามเป็น Commit เอกสาร
 
 ข้อมูลการส่งครั้งก่อนด้านล่างเป็นประวัติก่อนจัดทำ Snapshot ใหม่:
 
