@@ -1,4 +1,4 @@
-// Browser integration checks against an actual, disposable SQLite database.
+// Browser integration checks with scoped fixtures in the single MySQL database.
 // Uses the installed Chrome and Node's WebSocket; no test package installation.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -8,29 +8,26 @@ import net from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { randomBytes } from 'node:crypto';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 
 const client = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const root = path.dirname(client);
 const server = path.join(root, 'server');
 const require = createRequire(path.join(server, 'package.json'));
-const { PrismaClient } = require('@prisma/client');
+const { createFixtureDatabase } = require('./test/helpers/mysql-fixtures');
 const bcrypt = require('bcryptjs');
 const chrome = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 if (!fs.existsSync(chrome)) throw new Error('Installed Chrome not found. Set CHROME_PATH to a local browser executable.');
 const artifacts = path.join(client, '.ui-artifacts');
 fs.mkdirSync(artifacts, { recursive: true });
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'dormify-ui-'));
-const databasePath = path.join(temp, 'ui.db');
-fs.writeFileSync(databasePath, '', { flag: 'wx' });
-const databaseUrl = `file:${databasePath.replaceAll('\\', '/')}`;
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'dormify-ui-chrome-'));
 const password = randomBytes(24).toString('hex');
-const userEmail = 'ui-user@example.test';
-const adminEmail = 'ui-admin@example.test';
+let userEmail;
+let adminEmail;
 const children = [];
 const results = [];
-let prisma, cdp;
+let prisma, cdp, fixtures;
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const until = async (fn, label, timeout = 15000) => {
     const start = Date.now();
@@ -92,12 +89,13 @@ class DevTools {
 }
 
 try {
+    fixtures = await createFixtureDatabase();
+    prisma = fixtures.prisma;
+    userEmail = fixtures.email('ui-user');
+    adminEmail = fixtures.email('ui-admin');
     const frontendPort = await freePort();
     const frontendUrl = `http://127.0.0.1:${frontendPort}`;
-    const env = { ...process.env, DATABASE_URL: databaseUrl, JWT_SECRET: randomBytes(48).toString('hex'), PORT: '0', CLIENT_ORIGIN: frontendUrl };
-    const push = spawnSync(process.execPath, [path.join(server, 'node_modules/prisma/build/index.js'), 'db', 'push', '--skip-generate'], { cwd: server, env, encoding: 'utf8', windowsHide: true });
-    assert.equal(push.status, 0, push.stderr);
-    prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
+    const env = { ...process.env, DATABASE_URL: process.env.DATABASE_URL, JWT_SECRET: randomBytes(48).toString('hex'), PORT: '0', CLIENT_ORIGIN: frontendUrl };
     const admin = await prisma.user.create({ data: { email: adminEmail, password: await bcrypt.hash(password, 10), name: 'ผู้ดูแลทดสอบหน้าจอ', role: 'ADMIN' } });
     const dormitory = await prisma.property.create({ data: { name: 'หอพักทดสอบ DORMIFY', address: 'ที่อยู่สำหรับการทดสอบหน้าจอเท่านั้น', city: 'กรุงเทพมหานคร', type: 'HOSTEL', ownerId: admin.id, rules: 'ข้อกำหนดสำหรับทดสอบการแสดงผลภาษาไทย' } });
     const room = await prisma.room.create({ data: { propertyId: dormitory.id, roomNumber: '101', capacity: 2, price: 3500, type: 'AC' } });
@@ -106,7 +104,7 @@ try {
     const backend = launch(['src/index.js'], server, env);
     const backendUrl = await ready(backend, /http:\/\/127\.0\.0\.1:\d+/);
     const frontend = launch(['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', String(frontendPort), '--strictPort'], client,
-        { ...process.env, VITE_API_URL: backendUrl, VITE_DORMITORY_ID: '' });
+        { ...process.env, VITE_API_URL: backendUrl, VITE_DORMITORY_ID: String(dormitory.id) });
     await ready(frontend, /http:\/\/127\.0\.0\.1:\d+/);
     const profile = path.join(temp, 'chrome');
     const browser = spawn(chrome, ['--headless=new', '--remote-debugging-port=0', '--remote-debugging-address=127.0.0.1', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-component-update', '--disable-sync', '--lang=th-TH', 'about:blank'], { windowsHide: true, stdio: 'ignore' });
@@ -226,11 +224,11 @@ try {
         await until(() => cdp.evaluate('Array.from(document.querySelectorAll("button")).some(button=>button.innerText.includes("เพิ่มห้องพัก") && !button.disabled)'), 'room form is ready');
         await cdp.evaluate('Array.from(document.querySelectorAll("button")).find(button=>button.innerText.includes("เพิ่มห้องพัก")).click()');
         await fill('input[name=roomNumber]', '301'); await fill('input[name=price]', '3900'); await fill('input[name=capacity]', '2'); await submit('main form');
-        await waitText('เพิ่มห้อง 301 เรียบร้อยแล้ว'); assert.equal(await prisma.room.count(), 4);
+        await waitText('เพิ่มห้อง 301 เรียบร้อยแล้ว'); assert.equal(await prisma.room.count({ where: { propertyId: dormitory.id } }), 4);
     });
     await check('Admin confirmation dialog updates the real booking', async () => {
-        await navigate('/admin/bookings'); await waitText('ผู้ใช้ทดสอบหน้าจอ');
-        await cdp.evaluate('Array.from(document.querySelectorAll("tbody tr")).find(row=>row.innerText.includes("ผู้ใช้ทดสอบหน้าจอ")).querySelector("button").click()');
+        await navigate('/admin/bookings'); await waitText(userEmail);
+        await cdp.evaluate(`Array.from(document.querySelectorAll("tbody tr")).find(row=>row.innerText.includes(${JSON.stringify(userEmail)})).querySelector("button").click()`);
         await waitText('ยืนยันการอนุมัติคำขอ'); await click('dialog button[type=submit]'); await waitText('บันทึกสถานะรายการ');
         assert.equal((await prisma.booking.findFirst({ where: { roomId: room.id } })).status, 'CONFIRMED');
     });
@@ -252,7 +250,7 @@ try {
         assert.notEqual(style.style, 'none'); assert.notEqual(style.width, '0px');
     });
     assert.deepEqual(cdp.exceptions, [], 'Unexpected browser exceptions');
-    fs.writeFileSync(path.join(artifacts, 'results.json'), JSON.stringify({ passed: results.length, checks: results, database: 'temporary SQLite; production database untouched', screenshots: fs.readdirSync(artifacts).filter(file => file.endsWith('.png')) }, null, 2));
+    fs.writeFileSync(path.join(artifacts, 'results.json'), JSON.stringify({ passed: results.length, checks: results, database: 'MySQL dormify; no reset or additional database', fixtureScope: fixtures.scope, fixtureCleanup: 'pending', screenshots: fs.readdirSync(artifacts).filter(file => file.endsWith('.png')) }, null, 2));
     console.log('Browser checks passed:', results.length, '| Artifacts:', artifacts);
 } finally {
     if (cdp) {
@@ -263,5 +261,15 @@ try {
     for (const child of children.reverse()) if (child.exitCode === null && child.signalCode === null) {
         const ended = once(child, 'exit'); child.kill(); await Promise.race([ended, delay(3000)]);
     }
-    if (prisma) await prisma.$disconnect();
+    if (fixtures) {
+        await fixtures.cleanup();
+        const resultFile = path.join(artifacts, 'results.json');
+        if (fs.existsSync(resultFile)) {
+            const result = JSON.parse(fs.readFileSync(resultFile, 'utf8'));
+            if (result.fixtureScope === fixtures.scope) {
+                result.fixtureCleanup = 'verified; pre-existing records unchanged';
+                fs.writeFileSync(resultFile, JSON.stringify(result, null, 2));
+            }
+        }
+    }
 }

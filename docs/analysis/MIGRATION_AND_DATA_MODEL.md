@@ -1,5 +1,9 @@
 # แผน TypeScript, MySQL และแบบข้อมูลเชิงแนวคิด
 
+> สถานะ 13 พฤศจิกายน 2026: ย้ายเจ็ด Models เดิมไป MySQL 8.4.13 ผ่าน Docker แล้ว พร้อม Migration/Setup และทดสอบจริง ดู [สถานะปัจจุบัน](../PROJECT_STATUS.md) และ [คู่มือเครื่องใหม่](../SETUP_NEW_MACHINE.md) เนื้อหาด้านล่างเป็นแผนเดิมและแบบข้อมูลอนาคต ข้อความว่าไม่มี migrations/ยังไม่ได้ย้ายไม่ใช่สถานะล่าสุด
+
+> อัปเดตตามคำขอล่าสุด: ใช้ MySQL ฐานหลักเดียวชื่อ dormify ไม่แยก dormify_dev/dormify_test; ดู [รายการเตรียมฐานข้อมูล](../DATABASE_PREPARATION.md)
+
 > ปรับบริบท 13 พฤศจิกายน 2569: ดู [แบบข้อมูลตาม Business Rules ล่าสุด](PHASE1_BUSINESS_RULES_DESIGN.md)
 > ก่อนใช้ Models/Workflow ในเอกสารเดิมนี้ โดยเฉพาะผู้พักร่วม การกันห้องหมดอายุ เงินประกันแยกหมวด
 > BillingCycle ตามวันเริ่มสัญญาเป็นแนวทางเสนอในข้อ 9 ที่ยังรอเจ้าของหอยืนยัน; หนึ่ง Settlement เต็มยอดต่อบิล ไม่มีการแบ่งชำระ ตามข้อ 12
@@ -14,14 +18,14 @@
 1. ยืนยัน D01–D12 และเลือก MySQL รุ่นที่เข้ากับ Prisma/Node ที่จะตรึงจริงก่อนติดตั้ง ไม่ถือว่าเอกสารรุ่นล่าสุดใช้กับ Prisma 5 ได้ทุกคำสั่ง
 2. ตรวจ Installation/Service/Port จริง ปัจจุบันไม่พบ mysql/mysqld/mysqldump ใน PATH เท่านั้น ยังสรุปว่าเครื่องไม่มี MySQL ไม่ได้
 3. สำรอง SQLite และไฟล์แนบพร้อม Hash/จำนวนแถว ก่อนเปลี่ยน Environment; ตรวจว่า App ปิดการเขียนขณะ Snapshot หรือใช้วิธี Backup ที่สอดคล้องกับ SQLite
-4. สร้าง MySQL ฐานใหม่ที่ตั้งชื่อแยกเช่น dormify_dev และ dormify_test หลังได้รับคำสั่ง ใช้ InnoDB/utf8mb4 และเลือก Collation ตามความต้องการ Email/Room Number
+4. สร้าง MySQL ฐานหลักเดียวชื่อ dormify หลังได้รับคำสั่ง ใช้ InnoDB/utf8mb4 และเลือก Collation ตามความต้องการ Email/Room Number ไม่สร้างฐาน Dev/Test ถาวรเพิ่มเอง
 5. Bind MySQL loopback; แยก DB User ของ App ออกจาก root และบัญชี Migration; App มีสิทธิ์เฉพาะ DB ที่จำเป็น ไม่ให้สร้าง/ลบ Database
 6. เตรียม DATABASE_URL แบบ mysql ใน server/.env ที่ Ignore โดย Escape ส่วน Username/Password ที่มีอักขระพิเศษ เก็บ .env.example เป็น Placeholder ห้ามใส่รหัสจริงใน URL ตัวอย่าง
 7. จัด Schema สำหรับ Provider MySQL และ Native Types ที่ตรวจแล้วบน Branch/สำเนาพัฒนา ไม่สลับ Provider แล้วรันกับ SQLite เดิม
 8. สร้าง Initial Migration ของ MySQL บนฐานว่าง ตรวจ Generated SQL ก่อน Apply; ไม่ใช้ db push เป็นประวัติ Migration ระยะยาว และไม่ใช้ Reset/accept-data-loss เพื่อผ่าน Error
 9. ย้ายข้อมูลด้วย ETL ที่อ่าน SQLite แบบ Read-only และเขียน Target แบบ Transaction/Batch มี ID Mapping และตรวจซ้ำได้ ห้าม Import SQLite SQL dump เข้า MySQL ตรง ๆ
 10. ตรวจ Counts, FK, Unique, Thai text, Hash รหัสผ่าน, Precision เงิน และวันเวลาเทียบก่อน–หลัง เก็บผล Reconciliation โดยไม่เปิดเผยข้อมูลบุคคล
-11. ทดสอบ App/Tests กับ MySQL test DB ที่แยกชัด ไม่ปล่อย Test Suite สร้าง SQLite แล้วอ้างว่าผ่าน MySQL
+11. กำหนดวิธีทดสอบ MySQL จริงที่ไม่ทำลายข้อมูลในฐานเดียว ไม่ Reset/Seed ฐานใช้งาน และไม่สร้างฐานทดสอบถาวรเพิ่มเอง; ผลจาก SQLite ยังคงเป็นหลักฐานเฉพาะ SQLite
 12. Cutover หลังผ่านเกณฑ์และอนุมัติเท่านั้น เก็บ SQLite เดิมโดยไม่แก้/ลบ หากไม่มีข้อมูลจริง ณ เวลาย้าย ให้บันทึกว่ามี 0 แถวและทดสอบ Migration ด้วยข้อมูลทดสอบที่ได้รับอนุญาตแทนการแต่งผล
 
 Prisma migrations ผูก SQL กับ Provider; แนวคิดการเก็บไฟล์ Migration/แก้ SQL ดู [Prisma Migrate overview รุ่น v6](https://www.prisma.io/docs/orm/v6/prisma-migrate/understanding-prisma-migrate/overview)

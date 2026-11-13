@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env'), quiet: true });
 const prisma = require('../src/lib/prisma');
+const { validateDatabaseUrl } = require('../src/lib/database-config');
 
 const readCredentials = async () => {
     if (!process.stdin.isTTY) {
@@ -41,9 +42,7 @@ const readCredentials = async () => {
 };
 
 const main = async () => {
-    if (!process.env.DATABASE_URL?.startsWith('file:')) {
-        throw new Error('This bootstrap command only supports the local SQLite database');
-    }
+    validateDatabaseUrl(process.env.DATABASE_URL);
     const req = { body: await readCredentials() };
     const checks = [
         body('email').isString().bail().trim().toLowerCase().isEmail().isLength({ max: 254 }),

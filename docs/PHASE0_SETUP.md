@@ -1,5 +1,7 @@
 # DORMIFY — Phase 0 Local Development
 
+> เอกสารนี้เป็นประวัติ Phase 0 บน SQLite ปัจจุบันย้ายเป็น MySQL ผ่าน Docker แล้ว ให้ใช้ [คู่มือเครื่องใหม่](SETUP_NEW_MACHINE.md) และ [สถานะล่าสุด](PROJECT_STATUS.md) สำหรับติดตั้ง/รันจริง
+
 วันที่ตรวจสอบ: 12 พฤศจิกายน 2026 (Asia/Bangkok)
 
 ## ขอบเขต

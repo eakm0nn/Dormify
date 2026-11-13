@@ -26,9 +26,9 @@ router.post('/rooms', authenticateToken, authorize('ADMIN'), [
     body('capacity', 'Capacity must be a positive integer')
         .custom(value => typeof value === 'number' || typeof value === 'string').bail().isInt({ min: 1, max: 2147483647 }).bail()
         .custom(value => Number.isSafeInteger(Number(value))).toInt(),
-    body('price', 'Price must be a non-negative number')
-        .custom(value => typeof value === 'number' || typeof value === 'string').bail().isFloat({ min: 0 }).bail()
-        .custom(value => Number.isFinite(Number(value))).toFloat(),
+    body('price', 'Price must be between 0 and 9999999999.99 with at most 2 decimal places')
+        .custom(value => typeof value === 'number' || typeof value === 'string').bail()
+        .custom(value => /^\d+(\.\d{1,2})?$/.test(String(value)) && Number(value) <= 9999999999.99),
     body('type', 'Invalid room type').isIn(['AC', 'NON-AC'])
 ], validate, addRoom);
 

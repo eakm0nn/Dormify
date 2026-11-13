@@ -57,119 +57,64 @@ DORMIFY เป็นเว็บไซต์สำหรับหอพักแ
 | รูปแบบหน้าจอ | Tailwind CSS, Noto Sans Thai แบบ Local, Lucide React |
 | Routing / API Client | React Router, Axios |
 | Backend | Node.js, Express.js, JavaScript |
-| ฐานข้อมูล | SQLite |
+| ฐานข้อมูล | MySQL 8.4 ผ่าน Docker (ฐาน dormify เดียว) |
 | ORM | Prisma 5.22.0 |
 | Authentication | JWT, bcrypt และ Session ในฐานข้อมูล |
 
-Frontend ย้ายเป็น TypeScript แล้ว ส่วน Backend ยังใช้ JavaScript และฐานข้อมูลยังเป็น SQLite
-การย้าย MySQL พักไว้ตามแผนให้ทำฝั่งเว็บก่อน ดู [ผลการย้าย Frontend](docs/FRONTEND_TYPESCRIPT.md)
+Frontend ใช้ TypeScript แล้ว Backend ยังคง Node.js/Express JavaScript และฐานข้อมูลใช้ MySQL 8.4.13 ผ่าน Docker
+Schema/Migrations ใช้ Prisma 5.22.0 และเก็บ SQL ใน Git
 
 ## ติดตั้งและรันบน Local
 
-### 1. เตรียมเครื่องมือและติดตั้ง Dependencies
+ต้องมี Git, Node.js/npm และ Docker Desktop ที่เปิด Engine แล้ว ใช้คำสั่งจาก Root
+บน PowerShell ใช้ npm.cmd เพื่อเลี่ยงข้อจำกัด npm.ps1 ระบบอื่นใช้ npm ได้
 
-ต้องมี Git, Node.js และ npm โดยสภาพแวดล้อมที่เคยทดสอบคือ Windows, Node.js 24.18.0 และ npm 11.16.0
-คำสั่งด้านล่างใช้ PowerShell และ `npm.cmd` เพื่อหลีกเลี่ยงปัญหา Execution Policy ของ `npm.ps1`
-
-```powershell
-git clone https://github.com/eakm0nn/Dormify.git
-cd Dormify
+~~~powershell
 npm.cmd ci
 npm.cmd --prefix server ci
 npm.cmd --prefix client ci
-```
-
-### 2. ตั้งค่า Environment
-
-คัดลอกไฟล์ตัวอย่างเฉพาะกรณีที่ยังไม่มี `.env`:
-
-```powershell
-if (!(Test-Path server/.env)) { Copy-Item server/.env.example server/.env }
-if (!(Test-Path client/.env)) { Copy-Item client/.env.example client/.env }
-```
-
-สร้าง Secret แบบสุ่ม แล้วนำผลลัพธ์ไปใส่ `JWT_SECRET` ใน `server/.env`:
-
-```powershell
-node -p "require('node:crypto').randomBytes(48).toString('hex')"
-```
-
-ค่าที่ต้องตั้งใน `server/.env`:
-
-```dotenv
-DATABASE_URL="file:./dev.db"
-PORT=5000
-JWT_SECRET="ใส่ค่าสุ่มที่สร้างเอง"
-CLIENT_ORIGIN="http://127.0.0.1:5173"
-```
-
-ค่าที่ต้องตั้งใน `client/.env`:
-
-```dotenv
-VITE_API_URL="http://127.0.0.1:5000"
-```
-
-ห้าม Commit Secret หรือไฟล์ `.env` จริง ใช้ `.env.example` สำหรับแชร์รูปแบบการตั้งค่าเท่านั้น
-
-### 3. เตรียมฐานข้อมูลและสร้าง Admin
-
-```powershell
-npm.cmd --prefix server run db:setup
+npm.cmd run setup
+npm.cmd run db:up
+npm.cmd run db:setup
 npm.cmd --prefix server run admin:create
-```
+npm.cmd run dev
+~~~
 
-กรอกอีเมล ชื่อ และรหัสผ่าน Admin ใน Terminal รหัสผ่านต้องมีอย่างน้อย 12 ตัวอักษร
-ระบบไม่มีบัญชีหรือรหัสผ่าน Admin เริ่มต้น และจะไม่เปลี่ยนสิทธิ์บัญชีเดิมที่ใช้อีเมลซ้ำ
+setup สร้างไฟล์ .env ทั้งสามส่วนและสุ่ม Secrets ไม่แสดงค่าและไม่เขียนทับค่าที่มีอยู่
+db:setup ใช้ migrate deploy ไม่ Reset/Seed หรือสร้างฐาน Test/Shadow
+หากพบ SQLite เดิม สคริปต์หยุดรักษาข้อมูล ต้องวางแผนนำเข้าแยกก่อน ไม่มีการ Import อัตโนมัติ
 
-สคริปต์ Setup ใช้ Schema ปัจจุบันโดยไม่รัน Seed หรือ Reset ฐานข้อมูล
-หากมีข้อมูลเดิม ให้สำรองก่อนปรับ Schema และหยุดตรวจสอบหาก Prisma เตือนว่าข้อมูลอาจสูญหาย
-Seed รุ่นก่อนและคำสั่งที่เกี่ยวข้องถูกนำออกแล้ว เพราะลบข้อมูลและสร้างบทบาทแบบเก่าที่เลิกใช้
+admin:create รับอีเมล ชื่อ และรหัสผ่านใน Terminal ไม่มีบัญชี Default และไม่ยกสิทธิ์บัญชีเดิม
+ฐานใหม่เริ่มว่าง ให้เข้าสู่ระบบ Admin เพื่อบันทึกหอพักและเพิ่มห้องจริง
 
-### 4. เปิดเว็บไซต์
+- เว็บ: http://127.0.0.1:5173
+- API: http://127.0.0.1:5000
+- Ctrl+C หยุดเว็บ/API; MySQL ยังทำงาน หยุดด้วย npm.cmd run db:stop และเปิดใหม่ด้วย npm.cmd run db:up
 
-จากโฟลเดอร์หลักของโปรเจกต์:
-
-```powershell
-npm.cmd start
-```
-
-- เว็บไซต์: http://127.0.0.1:5173
-- Backend API: http://127.0.0.1:5000
-- หยุดการทำงานด้วย `Ctrl+C`
-
-ฐานข้อมูลใหม่เริ่มว่าง ให้เข้าสู่ระบบเป็น Admin แล้วบันทึกข้อมูลหอพักและเพิ่มห้องจริง
-หน้า Public ไม่สร้างห้อง ราคา หรือข้อมูลติดต่อจำลองแทนข้อมูลที่ยังไม่มี
-
-ถ้ามีหลายหอพักจากข้อมูลรุ่นก่อน ให้กำหนด `VITE_DORMITORY_ID` ใน `client/.env` เพื่อเลือกหอพักที่แสดง
-รายละเอียดเพิ่มเติมอยู่ในคู่มือ UI ด้านล่าง
+ข้อมูลอยู่ใน Docker volume dormify_mysql_data และไม่ตาม Git เช่นเดียวกับ .env
+Compose และ Migration ช่วยติดตั้งซ้ำ แต่ไม่ Sync ข้อมูลข้ามเครื่อง ห้ามลบ Volume เพื่อแก้การติดตั้ง
+รายละเอียด Environment/พอร์ต/การนำข้อมูลเดิมมาใช้ ดู [คู่มือเครื่องใหม่](docs/SETUP_NEW_MACHINE.md)
 
 ## ตรวจสอบและทดสอบ
 
-```powershell
+ดูตารางฐานข้อมูล: รัน npm.cmd run db:studio แล้วเปิด http://127.0.0.1:5555 โดยเปิด Terminal ค้างไว้ พอร์ต MySQL 3306 ใช้เปิดเป็นเว็บไม่ได้ รายละเอียดเชื่อม Workbench/DBeaver อยู่ในคู่มือเครื่องใหม่
+
+เปิด MySQL/ทำ db:setup ก่อน หยุดการใช้งานจริงชั่วคราว และรัน API/UI ตามลำดับ:
+
+~~~powershell
 npm.cmd --prefix server test
+npm.cmd --prefix client run test:ui
 npm.cmd --prefix client test
 npm.cmd --prefix client run lint
 npm.cmd --prefix client run format:check
-npm.cmd --prefix client run typecheck
 npm.cmd --prefix client run build
-```
+npm.cmd --prefix server run db:check
+~~~
 
-การทดสอบหน้าจอด้วย Chrome ที่ติดตั้งในเครื่อง:
-
-```powershell
-node client/scripts/ui-smoke.mjs
-```
-
-ชุดทดสอบใช้ SQLite ชั่วคราวแยกจากฐาน Local ไม่ต้องรัน Seed รุ่นก่อน
-ผลการทดสอบที่บันทึกไว้และข้อจำกัดการตรวจสอบดูได้จากเอกสารประกอบ
-
-จัดรูปแบบโค้ดด้วย `npm.cmd --prefix client run format`
-รายละเอียดการปรับโครงสร้าง การป้องกันอนุมัติห้องซ้ำ และการอัปเกรดฐานเดิมอยู่ใน
-[ผลปรับปรุงโค้ดและประสิทธิภาพ](docs/CODE_QUALITY_IMPROVEMENTS.md)
-
-หลังอัปเดตโค้ดรอบนี้ ให้รัน `npm.cmd --prefix server run db:setup` ก่อนเปิด Backend
-คำสั่งจะตรวจเลขห้องซ้ำก่อนเพิ่มข้อบังคับในฐานข้อมูล โดยไม่ Reset/Seed หรือลบรายการเดิม
-ถ้าพบเลขห้องซ้ำในหอเดียวกัน ระบบจะหยุดให้แก้ข้อมูลก่อน ไม่เลือกหรือลบรายการให้อัตโนมัติ
+API/UI ใช้ Fixture namespace สุ่มในฐาน dormify เดียว ลบเฉพาะข้อมูลที่สร้างเองและตรวจแฮชข้อมูลเดิม ไม่ Reset/Seed/สร้างฐานเพิ่ม
+ห้ามรันสองชุดพร้อมกันหรือระหว่างคนแก้ข้อมูล หากทดสอบหยุดกลางทางให้ตรวจ Fixture ค้างตามคู่มือ
+UI ใช้ Chrome ที่ติดตั้งในเครื่อง กำหนด CHROME_PATH ได้ ภาพ/results.json อยู่ใน client/.ui-artifacts/ ไม่ตาม Git
+ผลรอบย้าย MySQL: Backend 23/23, Frontend 3/3, Chrome 17 กลุ่ม, Lint/Format/Build ผ่าน
 
 ## โครงสร้างโปรเจกต์
 
@@ -186,13 +131,15 @@ Dormify/
 │   └── scripts/          # สคริปต์ทดสอบหน้าจอ
 ├── server/
 │   ├── src/              # Routes, Controllers และ Middleware
-│   ├── prisma/           # Schema และฐาน SQLite ที่ไม่ Commit
+│   ├── prisma/           # Schema และ SQL migrations สำหรับ MySQL
 │   ├── scripts/          # เตรียมฐานข้อมูลและสร้าง Admin
 │   └── test/             # ชุดทดสอบ API
 └── docs/                 # เอกสารโครงงาน แผนพัฒนา และผลทดสอบ
 ```
 
 ## เอกสารประกอบ
+
+- [เริ่มใช้ Prisma สำหรับผู้เริ่มต้น](docs/PRISMA_START.md)
 
 - [คู่มือ Authentication และการสร้าง Admin](docs/PHASE1_AUTH.md)
 - [ธีมภาษาไทย ผลทดสอบหน้าจอ และข้อจำกัด](docs/UI_REDESIGN.md)
@@ -201,6 +148,7 @@ Dormify/
 - [วิเคราะห์ขอบเขตและแผนพัฒนา](docs/analysis/README.md)
 - [แบบข้อมูลและ Business Rules](docs/analysis/PHASE1_BUSINESS_RULES_DESIGN.md)
 - [กติกาการทำงาน 14 ข้อและสถานะรอยืนยัน](docs/BUSINESS_RULES.md)
+- [สิ่งที่ต้องเตรียมสำหรับฐานข้อมูล](docs/DATABASE_PREPARATION.md)
 
 เอกสารบางฉบับบันทึกสถานะในแต่ละช่วงพัฒนา อาจกล่าวถึงฟังก์ชันรุ่นก่อนที่ปรับไปแล้ว
 ให้พิจารณาวันที่และขอบเขตของเอกสารนั้นร่วมด้วย
@@ -209,5 +157,3 @@ Dormify/
 
 พัฒนาและปรับปรุงเป็น DORMIFY โดย [eakm0nn](https://github.com/eakm0nn)
 สำหรับโครงงานจบระดับ ปวช.3
-
-ฟอนต์ Noto Sans Thai ใช้ตาม [SIL Open Font License](client/src/assets/fonts/OFL.txt)

@@ -1,5 +1,7 @@
 # Phase 1 — Authentication: Admin และ User
 
+> เอกสารนี้บันทึกงาน Authentication ก่อนย้ายฐาน ปัจจุบันใช้ MySQL ผ่าน Docker และยังคง ADMIN/USER ให้ใช้ [คู่มือเครื่องใหม่](SETUP_NEW_MACHINE.md) สำหรับ Environment/Setup/Admin และ [สถานะล่าสุด](PROJECT_STATUS.md) สำหรับผลทดสอบใหม่
+
 วันที่ทำและทดสอบ: 13 พฤศจิกายน 2569 (Asia/Bangkok)
 
 ## ขอบเขตที่ทำในรอบนี้

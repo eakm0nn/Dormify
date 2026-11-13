@@ -8,7 +8,10 @@
     "dev": "nodemon src/index.js",
     "db:setup": "node scripts/setup-db.js",
     "admin:create": "node scripts/create-admin.js",
-    "test": "node --test test/phase0.test.js"
+    "test": "node scripts/run-db-tests.js api",
+    "db:migrate": "node scripts/setup-db.js",
+    "db:check": "node scripts/verify-db.js",
+    "db:studio": "prisma studio --hostname 127.0.0.1 --port 5555 --browser none"
   },
   "keywords": [],
   "author": "",

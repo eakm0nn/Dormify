@@ -9,7 +9,7 @@ class BookingError extends Error {
 
 const bookingFailure = (res, error, fallback) => {
     if (error instanceof BookingError) return res.status(error.status).json({ error: error.message });
-    // A contending SQLite transaction must be retried as a whole.
+    // A deadlock or transaction timeout must be retried as a whole.
     if (['P2034', 'P1008', 'P2028'].includes(error.code)) {
         return res.status(409).json({ error: 'Booking changed. Refresh and try again' });
     }

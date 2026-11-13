@@ -1,137 +1,98 @@
-# DORMIFY — เปิดโปรเจกต์และทำงานต่อบนเครื่องใหม่
+# DORMIFY — เปิดโปรเจกต์บนเครื่องใหม่
 
-อัปเดต: 13 พฤศจิกายน 2026 (Asia/Bangkok)
-คำสั่งด้านล่างสำหรับ Windows/PowerShell และรันจาก Root ของ Repository
-ใช้พาธเทียบจาก Root ไม่ผูกกับชื่อผู้ใช้หรือโฟลเดอร์ของเครื่องเดิม
+อัปเดต 13 พฤศจิกายน 2026 (Asia/Bangkok)
+อ่าน [สถานะ](PROJECT_STATUS.md), [บันทึกงาน](WORK_LOG.md), [กติกา](BUSINESS_RULES.md) และตรวจ Git status ก่อนเริ่ม
+งานย้าย MySQL รอบนี้ยังไม่ Commit/Push ต้องส่งโค้ดและเอกสารให้ครบก่อนสลับเครื่อง
+สำเนาที่มีประวัติก่อนเริ่ม main ใหม่วันที่ 13 พฤศจิกายน ให้ Clone ใหม่ตาม [คู่มือ GitHub](GITHUB_WORKFLOW.md)
 
-## 1. รับโค้ดและบันทึกให้ครบ
+## เครื่องมือและติดตั้ง
 
-อ่าน [PROJECT_STATUS.md](PROJECT_STATUS.md), [WORK_LOG.md](WORK_LOG.md) และ [BUSINESS_RULES.md](BUSINESS_RULES.md) ก่อน
+ต้องมี Git, Node.js/npm, Docker Desktop ที่เปิด Engine แล้ว และ Chrome เฉพาะทดสอบหน้าจอ
+เครื่องนี้ตรวจด้วย Windows, Node 24.15.0, npm 11.12.1, Docker Engine 29.7.2, Compose 5.5.1
+รันจาก Root ใช้ npm.cmd บน PowerShell เพื่อเลี่ยง npm.ps1 ระบบอื่นใช้ npm ได้
 
-ผู้ใช้สั่งให้เริ่มประวัติ main ใหม่วันที่ 13 พฤศจิกายน 2026 ดูสถานะการส่งใน PROJECT_STATUS.md
-ส่ง Snapshot 4450c62 สำเร็จแล้ว ให้ใช้ main ล่าสุดที่รวมบันทึกผลตามมาด้วย
-เมื่อส่งประวัติใหม่สำเร็จแล้ว สำเนาที่มีประวัติก่อนหน้านี้ให้ Clone main ลงโฟลเดอร์ใหม่ ไม่ Pull/Merge ประวัติเก่ากลับเข้ามา
-ตัวอย่างคำสั่งอยู่ใน GITHUB_WORKFLOW.md; สำเนาที่ Clone หลังเริ่มประวัติใหม่แล้วจึงใช้ Pull ตามปกติได้
-หากมีการทำงานเพิ่มหลังจากนั้น ให้ตรวจว่างานที่เปลี่ยนและไฟล์ใหม่ได้รับการ Commit/Push หรือส่งต่อครบก่อนสลับเครื่อง
-ตรวจ Git status ทั้งสองฝั่ง และตรวจว่ามีไฟล์บันทึก/Hook/Components/Tests/Schema ล่าสุดก่อนเริ่ม
+~~~powershell
+npm.cmd ci
+npm.cmd --prefix server ci
+npm.cmd --prefix client ci
+npm.cmd run setup
+npm.cmd run db:up
+npm.cmd run db:setup
+npm.cmd --prefix server run db:check
+~~~
 
-Remote ของสำเนาปัจจุบันตั้งไว้แล้ว ดูวิธี Commit/Push และ Clone/Pull ใน [คู่มือ GitHub](GITHUB_WORKFLOW.md)
+ใช้ Lockfile ทั้งสามส่วน Prisma ตรึง 5.22.0 ไม่ติดตั้งรุ่นล่าสุดแทนเอง
+การลบใบอนุญาตใน node_modules ที่เคยสั่งเป็นสถานะเฉพาะเครื่อง npm ci สร้างกลับตามแพ็กเกจ ไม่มีระบบลบอัตโนมัติ
 
-node_modules, dist, .ui-artifacts, .env และฐาน SQLite ถูก Ignore จึงไม่ตามไปกับ Git
-หากต้องใช้ข้อมูลเดิม ให้สำรองและย้าย SQLite แยกต่างหากโดยหยุด Backend ก่อน ไม่คัดลอกเฉพาะไฟล์ db ระหว่างที่ยังมีการเขียน
-ไฟล์แนบจริงในอนาคตต้องสำรอง/ย้ายพร้อมฐานข้อมูลที่สอดคล้องกัน
+## Environment และฐานข้อมูล
 
-## 2. เครื่องมือและ Dependencies
+setup สร้าง Root .env, server/.env, client/.env พร้อมสุ่มรหัสผ่าน/JWT Secret ไม่แสดงค่าและไม่ทับค่าที่มีอยู่
+รูปแบบอยู่ใน .env.example ของแต่ละส่วน ค่าจริงห้ามใส่ในแชต บันทึก หรือ Git
+ห้ามใส่รหัสฐาน/JWT_SECRET ใน VITE_* เพราะ Frontend อ่านได้
 
-ต้องมี Node.js, npm และ Git; ผลทดสอบก่อนหน้าใช้ Node 24.18.0 และ npm 11.16.0
-Chrome จำเป็นเฉพาะเมื่อรันทดสอบหน้าจอ ไม่จำเป็นต่อการ Build
+Compose ใช้ MySQL 8.4 ตรึง digest พอร์ต 127.0.0.1:3306 ฐาน dormify บัญชีแอป dormify_app แยกจาก Root
+db:setup สร้าง Prisma Client และใช้ migrate deploy ไม่ Reset/Seed หรือสร้าง Test/Shadow database
+หยุด Backend ก่อน db:setup โดยเฉพาะ Windows ที่อาจล็อก Prisma Engine
 
-```powershell
-node --version
-npm --version
-git --version
-npm ci
-npm --prefix server ci
-npm --prefix client ci
-```
+หากพอร์ตชน ตั้ง MYSQL_PORT ใน Root .env ก่อน setup ครั้งแรก
+หาก DATABASE_URL เดิมไม่ตรง Compose สคริปต์หยุดให้ตรวจเอง ไม่เขียนทับ
+หากพบ SQLite เดิม (file: URL หรือ server/prisma/dev.db) สคริปต์หยุดรักษาข้อมูล ต้องวางแผนนำเข้าก่อน ไม่มีการนำเข้าอัตโนมัติ
+หากมีหลายหอในข้อมูลเดิม ตั้ง VITE_DORMITORY_ID ใน client/.env เป็นหอที่ต้องการ
 
-มี Lockfile แยกสามส่วน ให้ใช้ npm ci เพื่อได้แพ็กเกจตามชุดที่บันทึกไว้
-Prisma ฝั่ง Server ตรึง 5.22.0; ไม่เรียกติดตั้ง Prisma รุ่นล่าสุดแทนโดยพลการ
-ถ้า PowerShell ปฏิเสธ npm.ps1 ให้ใช้ npm.cmd แทน npm ในทุกคำสั่ง ไม่ต้องลด Execution Policy
+## สร้าง Admin และเปิดระบบ
 
-## 3. Environment ของเครื่องนี้
+~~~powershell
+npm.cmd --prefix server run admin:create
+npm.cmd run dev
+~~~
 
-คัดลอกเฉพาะเมื่อไฟล์ยังไม่มี:
+กรอกอีเมล ชื่อ และรหัสผ่านอย่างน้อย 12 ตัวอักษร ไม่เกิน 72 UTF-8 bytes ใน Terminal
+ไม่มีบัญชี Default ไม่ยกสิทธิ์/เขียนทับอีเมลเดิม จากนั้นเข้าสู่ระบบ Admin เพื่อบันทึกข้อมูลหอพักและห้องจริง
 
-```powershell
-if (!(Test-Path -LiteralPath server/.env)) { Copy-Item -LiteralPath server/.env.example -Destination server/.env }
-if (!(Test-Path -LiteralPath client/.env)) { Copy-Item -LiteralPath client/.env.example -Destination client/.env }
-```
+- เว็บ http://127.0.0.1:5173
+- API http://127.0.0.1:5000
+- Ctrl+C หยุดเว็บ/API ส่วน MySQL ยังทำงาน
 
-ตรวจ server/.env:
+Root dev เปิดสองส่วน แต่ Backend ใช้ node จึงไม่ Restart เมื่อแก้ไฟล์
+ถ้าต้องการ Restart เปิดสอง Terminal ด้วย npm.cmd --prefix server run dev และ npm.cmd --prefix client run dev
 
-- DATABASE_URL ใช้ file:./dev.db สำหรับ SQLite ปัจจุบัน
-- PORT ใช้ 5000 และ CLIENT_ORIGIN ใช้ http://127.0.0.1:5173
-- JWT_SECRET ต้องเป็นค่าสุ่มเฉพาะเครื่องอย่างน้อย 32 ตัวอักษร ไม่ใช่ค่าว่างหรือ Placeholder
+## การเก็บข้อมูลและข้ามเครื่อง
 
-สร้างค่าสุ่มใน Terminal ของตนเองแล้วนำไปใส่ JWT_SECRET ได้ด้วย:
+ดูตารางผ่านเบราว์เซอร์ได้ด้วย npm.cmd run db:studio จาก Root แล้วเปิด http://127.0.0.1:5555 และเปิด Terminal นี้ค้างไว้ กด Ctrl+C เพื่อหยุด Studio
+MySQL พอร์ต 3306 เป็นการเชื่อมต่อฐานข้อมูลโดยตรง ไม่ใช่ HTTP และยังไม่มี phpMyAdmin
+หากใช้ Workbench/DBeaver ให้ตั้ง Host 127.0.0.1, Port ตาม MYSQL_PORT (ปกติ 3306), Database dormify, User dormify_app และใช้รหัสจาก MYSQL_PASSWORD ใน Root .env ของเครื่องตนเอง ไม่ใช้รหัสผ่านบัญชี Admin ของเว็บ
+Studio ใช้ค่าฝั่ง Server โดยอัตโนมัติ ไม่ต้องคัดลอกรหัสผ่าน และแก้ไข/ลบข้อมูลจริงได้ จึงตรวจรายการก่อนบันทึก
 
-```powershell
-node -p "require('node:crypto').randomBytes(48).toString('hex')"
-```
+~~~powershell
+npm.cmd run db:status
+npm.cmd run db:stop
+npm.cmd run db:up
+~~~
 
-อย่าใส่ค่าที่สร้างใน Work log แชต Source หรือ Git; หากเปลี่ยน Secret ต้องเข้าสู่ระบบใหม่
-ตรวจ client/.env ให้ VITE_API_URL เป็น http://127.0.0.1:5000
-ถ้ามีหลายหอในฐานเดิม ให้กำหนด VITE_DORMITORY_ID เป็น ID ของหอที่ต้องการแสดง; ถ้ามีหอเดียวไม่ต้องกำหนด
-ห้ามใส่ JWT_SECRET หรือรหัสฐานข้อมูลในตัวแปร VITE_* เพราะ Frontend อ่านได้
+ข้อมูลอยู่ใน Named volume dormify_mysql_data ไม่หายเมื่อหยุด/สร้าง Container ใหม่ ห้ามลบ Volume หรือใช้ docker compose down -v เพื่อแก้การติดตั้ง
+ค่า MYSQL_* ใช้ตอนเริ่ม Volume ครั้งแรก การแก้รหัสใน .env ไม่เปลี่ยนรหัสในฐานเดิม
+Compose/Schema/Migrations ตาม Git แต่ Volume และ .env ไม่ตาม Git ไม่ใช่ระบบ Sync
+หากต้องการข้อมูลเดิม ต้องย้าย MySQL/ไฟล์แนบด้วย Export/Import ที่กระทบยอดแยกก่อน ไม่เริ่มฐานว่างแทนโดยพลการ
 
-## 4. ฐานข้อมูลและ Admin
+## ตรวจสอบ
 
-หยุด Backend ก่อน Generate/Setup โดยเฉพาะ Windows ที่ Process เดิมอาจล็อก Prisma Engine
-ถ้าใช้ข้อมูลเดิมให้สำรองก่อน แล้วรัน:
+เปิด MySQL และทำ db:setup ก่อน หยุดการใช้งานจริงชั่วคราว รัน API/UI ตามลำดับ:
 
-```powershell
-npm --prefix server run db:setup
-```
+~~~powershell
+npm.cmd --prefix server test
+npm.cmd --prefix client run test:ui
+npm.cmd --prefix client test
+npm.cmd --prefix client run lint
+npm.cmd --prefix client run format:check
+npm.cmd --prefix client run build
+npm.cmd --prefix server run db:check
+~~~
 
-คำสั่งสร้างฐานใหม่เมื่อยังไม่มี ไม่ Reset/Seed ฐานเดิม และตรวจเลขห้องซ้ำก่อนเพิ่ม Unique Constraint
-หากพบเลขห้องซ้ำจะหยุดให้แก้ข้อมูล ไม่เพิ่ม --accept-data-loss หรือ --force-reset เพื่อข้าม
-ฐานเริ่มใหม่ไม่มีผู้ใช้ ห้อง หรือบัญชี Admin จำลอง
+API/UI ใช้ Fixture namespace สุ่มใน dormify เดียว ลบเฉพาะข้อมูลที่สร้างเอง และเทียบแฮชข้อมูลเดิมเจ็ดตาราง ไม่ Reset/Seed/สร้างฐานเพิ่ม
+หากมีข้อมูลอื่นเชื่อมเข้า Fixture จะหยุดลบเพื่อรักษาข้อมูล
+Fixture มองเห็นระหว่างทดสอบ ถ้า Process ถูกบังคับหยุดให้ตรวจ namespace ที่ค้าง ไม่ล้างตารางทั้งหมด
+ห้ามรัน API/UI พร้อมกันหรือระหว่างคนแก้ข้อมูล เพราะการตรวจข้อมูลเดิมจะรายงานความเปลี่ยนแปลงนั้นด้วย
+UI ใช้ Chrome ที่ติดตั้ง หากพาธต่างตั้ง CHROME_PATH ผลอยู่ใน client/.ui-artifacts/ ไม่ตาม Git
 
-สร้าง Admin เฉพาะเมื่อยังไม่มีบัญชีที่จะใช้:
-
-```powershell
-npm --prefix server run admin:create
-```
-
-กรอก Email ชื่อ และรหัสผ่านใน Terminal; รหัสผ่านต้องมีอย่างน้อย 12 ตัวอักษรและไม่เกิน 72 UTF-8 bytes
-ไม่มีบัญชี Default และ Script ไม่ยกสิทธิ์หรือเขียนทับบัญชีที่มี Email เดิม
-ดูรายละเอียดใน [PHASE1_AUTH.md](PHASE1_AUTH.md)
-
-## 5. เปิดระบบ
-
-```powershell
-npm run dev
-```
-
-- Frontend: http://127.0.0.1:5173
-- Backend: http://127.0.0.1:5000
-- หยุดด้วย Ctrl+C
-
-Root dev เรียก start และเปิดทั้งสองส่วน แต่ Backend ยังไม่ Restart เมื่อแก้ไฟล์
-ถ้าต้องการ Restart Backend อัตโนมัติ ให้ใช้สอง Terminal แทน:
-
-```powershell
-npm --prefix server run dev
-```
-
-```powershell
-npm --prefix client run dev
-```
-
-เข้าสู่ระบบเป็น Admin แล้วบันทึกข้อมูลหอพักและห้องจริงหากเริ่มจากฐานว่าง
-หน้าเว็บที่ยังไม่มีข้อมูลจะแสดง Empty state ไม่เติม Mock Data ให้อัตโนมัติ
-
-## 6. ตรวจสอบบนเครื่องใหม่
-
-```powershell
-npm --prefix server test
-npm --prefix client test
-npm --prefix client run lint
-npm --prefix client run format:check
-npm --prefix client run build
-node client/scripts/ui-smoke.mjs
-```
-
-ชุดทดสอบ API/UI ใช้ SQLite ชั่วคราวแยกจากฐานใช้งาน
-UI Test ใช้ Chrome ที่ติดตั้งไว้ หากพาธไม่ตรงให้กำหนด CHROME_PATH เป็นพาธไฟล์ Chrome ของเครื่องนั้น
-ผลภาพและ results.json อยู่ใน client/.ui-artifacts/ ไม่ตาม Git จึงควรรันทดสอบใหม่และบันทึกผลของเครื่องใหม่ตามจริง
-การทดสอบเดิมผ่าน 21 Backend Tests, 3 Frontend unit Tests และ 17 Chrome กลุ่ม แต่ไม่รับรองสภาพเครื่องใหม่โดยยังไม่รัน
-
-## 7. เริ่มงานต่อและส่งต่อครั้งถัดไป
-
-- ยึดกติกา 14 ข้อและสถานะข้อ 3/6/9 ที่ยังรอยืนยัน ไม่เปิดค่าข้อเสนอเอง
-- อ่านงานค้างใน PROJECT_STATUS.md แล้วทำตามขอบเขตที่ผู้ใช้สั่งล่าสุด
-- อัปเดต WORK_LOG.md และ PROJECT_STATUS.md ทุกครั้งที่มีการเปลี่ยนแปลงสำคัญ พร้อมบอกผลตรวจจริง
-- ถ้าเปลี่ยนวิธีรัน/ตั้งค่า/ฐานข้อมูล ให้แก้คู่มือนี้ด้วย
-- ก่อนย้ายเครื่องตรวจว่างานที่แก้และไฟล์ใหม่ถูกส่งไปครบ โดยแยก Secret/ข้อมูลจริงออกจาก Source
+ผลเครื่องนี้: Backend 23/23, Frontend 3/3, Chrome 17 กลุ่ม, Lint/Format/Build ผ่าน ต้องทดสอบใหม่บนเครื่องใหม่
+อัปเดต WORK_LOG/PROJECT_STATUS ทุกครั้งตาม AGENTS.md ระบบสัญญา/มิเตอร์/บิล/การเงินยังต้องพัฒนาต่อ ข้อ 3/6/9 ยังรอยืนยัน

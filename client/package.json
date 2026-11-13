@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src test vite.config.ts .eslintrc.cjs .prettierrc.json",
     "format:check": "prettier --check src test vite.config.ts .eslintrc.cjs .prettierrc.json",
-    "test:ui": "node scripts/ui-smoke.mjs",
+    "test:ui": "node ../server/scripts/run-db-tests.js ui",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {

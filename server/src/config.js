@@ -1,10 +1,12 @@
 const path = require('node:path');
+const { validateDatabaseUrl } = require('./lib/database-config');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env'), quiet: true });
 
 const jwtSecret = process.env.JWT_SECRET;
 if (!jwtSecret || jwtSecret.trim().length < 32 || jwtSecret === 'your_secure_jwt_secret_here') {
     throw new Error('JWT_SECRET must be set to a random secret of at least 32 characters in server/.env');
 }
+validateDatabaseUrl(process.env.DATABASE_URL);
 
 module.exports = {
     jwtSecret,
