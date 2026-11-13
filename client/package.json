@@ -1,0 +1,43 @@
+{
+  "name": "client",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run typecheck && vite build",
+    "lint": "eslint src test --ext .ts,.tsx --max-warnings 0",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write src test vite.config.ts .eslintrc.cjs .prettierrc.json",
+    "format:check": "prettier --check src test vite.config.ts .eslintrc.cjs .prettierrc.json",
+    "test:ui": "node scripts/ui-smoke.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "axios": "^1.13.5",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.564.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.0",
+    "tailwind-merge": "^3.4.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@typescript-eslint/eslint-plugin": "^8.72.2",
+    "@typescript-eslint/parser": "^8.72.2",
+    "@vitejs/plugin-react": "^4.2.0",
+    "autoprefixer": "^10.4.24",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "postcss": "^8.5.6",
+    "prettier": "^3.10.1",
+    "tailwindcss": "^3.3.5",
+    "typescript": "^5.9.3",
+    "vite": "^5.0.0"
+  }
+}
