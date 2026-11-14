@@ -25,6 +25,7 @@ export interface Room {
   price: string | number;
   type: string;
   isAvailable: boolean;
+  isActive: boolean;
   propertyId: number;
   images?: string[];
   property?: Dormitory;
@@ -57,6 +58,8 @@ export interface Dormitory {
   reviews?: Review[];
 }
 export interface Booking {
+  holdExpiresAt?: string | null;
+  holdHoursSnapshot?: number | null;
   id: number;
   startDate: string;
   endDate: string;

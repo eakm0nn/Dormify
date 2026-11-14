@@ -27,6 +27,8 @@ model User {
   bookings   Booking[]
   complaints Complaint[]
   sessions   AuthSession[]
+  tenantProfile TenantProfile?
+  notifications Notification[]
 }
 
 model AuthSession {
@@ -68,6 +70,7 @@ model Room {
   price       Decimal @db.Decimal(12, 2)
   type        String  @db.VarChar(16) // AC, NON-AC
   isAvailable Boolean @default(true)
+  isActive    Boolean @default(true)
 
   // Foreign Key
   propertyId Int
@@ -75,6 +78,9 @@ model Room {
 
   // Relations
   bookings Booking[]
+  leases Lease[]
+  readings MeterReading[]
+  maintenance MaintenanceRequest[]
 
   @@unique([propertyId, roomNumber])
 }
@@ -86,6 +92,8 @@ model Booking {
   status      String   @db.VarChar(16) // PENDING, CONFIRMED, REJECTED, CANCELLED
   totalAmount Decimal  @db.Decimal(12, 2)
   createdAt   DateTime @default(now()) @db.DateTime(3)
+  holdHoursSnapshot Int?
+  holdExpiresAt DateTime? @db.DateTime(3)
 
   // Foreign Keys
   userId Int
@@ -95,6 +103,7 @@ model Booking {
 
   // Relations
   payments Payment[]
+  lease Lease?
 
   @@index([userId, createdAt])
   @@index([roomId, status])
@@ -125,4 +134,224 @@ model Complaint {
   user       User     @relation(fields: [userId], references: [id])
   propertyId Int
   property   Property @relation(fields: [propertyId], references: [id])
+}
+
+model TenantProfile {
+  id Int @id @default(autoincrement())
+  userId Int? @unique
+  name String @db.VarChar(100)
+  phone String? @db.VarChar(30)
+  address String? @db.VarChar(500)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  createdBy Int
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  leases Lease[]
+}
+
+model Lease {
+  id Int @id @default(autoincrement())
+  contractNo String @unique @db.VarChar(80)
+  tenantId Int
+  roomId Int
+  bookingId Int? @unique
+  activeRoomId Int? @unique
+  status String @default("DRAFT") @db.VarChar(16)
+  startDate DateTime @db.Date
+  endDate DateTime? @db.Date
+  monthlyRent Decimal @db.Decimal(12,2)
+  depositRequired Decimal @db.Decimal(12,2)
+  dueDaysSnapshot Int
+  depositMonthsSnapshot Int
+  signedDate DateTime? @db.Date
+  endedAt DateTime? @db.DateTime(3)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  tenant TenantProfile @relation(fields: [tenantId], references: [id])
+  room Room @relation(fields: [roomId], references: [id])
+  booking Booking? @relation(fields: [bookingId], references: [id])
+  occupants LeaseOccupant[]
+  invoices Invoice[]
+  deposits DepositEntry[]
+  maintenance MaintenanceRequest[]
+  @@index([tenantId, status])
+  @@index([roomId, status])
+}
+
+model LeaseOccupant {
+  id Int @id @default(autoincrement())
+  leaseId Int
+  name String @db.VarChar(100)
+  phone String? @db.VarChar(30)
+  lease Lease @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+}
+
+model UtilityRate {
+  id Int @id @default(autoincrement())
+  utilityType String @db.VarChar(16)
+  unitPrice Decimal @db.Decimal(12,6)
+  effectiveFrom DateTime @db.Date
+  sourceReference String @db.VarChar(500)
+  createdBy Int
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  @@unique([utilityType, effectiveFrom])
+}
+
+model MeterReading {
+  id Int @id @default(autoincrement())
+  roomId Int
+  utilityType String @db.VarChar(16)
+  readingDate DateTime @db.Date
+  value Decimal @db.Decimal(14,3)
+  createdBy Int
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  room Room @relation(fields: [roomId], references: [id])
+  @@unique([roomId, utilityType, readingDate])
+}
+
+model Invoice {
+  id Int @id @default(autoincrement())
+  invoiceNo String @unique @db.VarChar(80)
+  leaseId Int
+  periodStart DateTime @db.Date
+  periodEnd DateTime @db.Date
+  cycleIndex Int
+  dueDaysSnapshot Int
+  dueDate DateTime @db.Date
+  status String @default("ISSUED") @db.VarChar(16)
+  tenantNameSnapshot String @db.VarChar(100)
+  roomNumberSnapshot String @db.VarChar(50)
+  totalAmount Decimal @db.Decimal(12,2)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  lease Lease @relation(fields: [leaseId], references: [id])
+  items InvoiceItem[]
+  payments InvoicePayment[]
+  settlement InvoiceSettlement?
+  @@unique([leaseId, periodStart])
+  @@unique([leaseId, cycleIndex])
+}
+
+model InvoiceItem {
+  id Int @id @default(autoincrement())
+  invoiceId Int
+  itemType String @db.VarChar(16)
+  quantity Decimal @db.Decimal(14,3)
+  unitPrice Decimal @db.Decimal(18,6)
+  amount Decimal @db.Decimal(12,2)
+  openingValue Decimal? @db.Decimal(14,3)
+  closingValue Decimal? @db.Decimal(14,3)
+  sourceReference String? @db.VarChar(500)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model InvoicePayment {
+  id Int @id @default(autoincrement())
+  invoiceId Int
+  method String @db.VarChar(16)
+  amount Decimal @db.Decimal(12,2)
+  paidDate DateTime @db.Date
+  status String @default("PENDING") @db.VarChar(16)
+  submittedBy Int
+  reviewedBy Int?
+  reviewedAt DateTime? @db.DateTime(3)
+  reason String? @db.VarChar(500)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+  proof PaymentProof?
+  settlement InvoiceSettlement?
+}
+
+model PaymentProof {
+  id Int @id @default(autoincrement())
+  paymentId Int @unique
+  data Bytes @db.MediumBlob
+  mime String @db.VarChar(32)
+  checksum String @db.Char(64)
+  size Int
+  payment InvoicePayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+}
+
+model InvoiceSettlement {
+  invoiceId Int @id
+  paymentId Int @unique
+  confirmedAt DateTime @default(now()) @db.DateTime(3)
+  confirmedBy Int
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+  payment InvoicePayment @relation(fields: [paymentId], references: [id])
+}
+
+model DepositEntry {
+  id Int @id @default(autoincrement())
+  leaseId Int
+  kind String @db.VarChar(16)
+  amount Decimal @db.Decimal(12,2)
+  method String @db.VarChar(16)
+  recordedBy Int
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  lease Lease @relation(fields: [leaseId], references: [id])
+  @@unique([leaseId, kind])
+}
+
+model MaintenanceRequest {
+  id Int @id @default(autoincrement())
+  leaseId Int
+  roomId Int
+  reportedBy Int
+  title String @db.VarChar(200)
+  description String @db.Text
+  status String @default("OPEN") @db.VarChar(16)
+  resolution String? @db.VarChar(1000)
+  resolvedAt DateTime? @db.DateTime(3)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  lease Lease @relation(fields: [leaseId], references: [id])
+  room Room @relation(fields: [roomId], references: [id])
+}
+
+model Expense {
+  id Int @id @default(autoincrement())
+  description String @db.VarChar(500)
+  category String @db.VarChar(100)
+  amount Decimal @db.Decimal(12,2)
+  expenseDate DateTime @db.Date
+  recordedBy Int
+  createdAt DateTime @default(now()) @db.DateTime(3)
+}
+
+model Announcement {
+  id Int @id @default(autoincrement())
+  title String @db.VarChar(200)
+  message String @db.Text
+  createdBy Int
+  createdAt DateTime @default(now()) @db.DateTime(3)
+}
+
+model Notification {
+  id Int @id @default(autoincrement())
+  userId Int
+  title String @db.VarChar(200)
+  message String @db.VarChar(1000)
+  readAt DateTime? @db.DateTime(3)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt])
+}
+
+model AuditLog {
+  id Int @id @default(autoincrement())
+  actorId Int?
+  actorName String @db.VarChar(100)
+  action String @db.VarChar(64)
+  entityType String @db.VarChar(64)
+  entityId Int?
+  summary String @db.VarChar(500)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  fixtureScope String? @db.VarChar(64)
+  @@index([createdAt])
+}
+
+model RentalPolicy {
+  id Int @id @default(autoincrement())
+  holdHours Int @default(72)
+  depositMonths Int @default(1)
+  dueDays Int @default(5)
+  createdBy Int?
+  createdAt DateTime @default(now()) @db.DateTime(3)
 }

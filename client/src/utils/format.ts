@@ -15,6 +15,8 @@ const roomTypes: Partial<Record<string, string>> = {
   'NON-AC': 'ห้องพัดลม',
 };
 const bookingStatuses: Partial<Record<string, { label: string; className: string }>> = {
+  EXPIRED: { label: 'หมดเวลาการกันห้อง', className: 'badge-neutral' },
+  CONVERTED: { label: 'ทำสัญญาแล้ว', className: 'badge-success' },
   PENDING: { label: 'รอดำเนินการ', className: 'badge-warning' },
   CONFIRMED: { label: 'อนุมัติแล้ว', className: 'badge-success' },
   APPROVED: { label: 'อนุมัติแล้ว', className: 'badge-success' },

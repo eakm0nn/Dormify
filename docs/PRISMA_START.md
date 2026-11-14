@@ -8,6 +8,7 @@
 หน้าเว็บเรียก API ของ Express → Controller ใช้ Prisma Client → อ่าน/บันทึกลง MySQL
 ข้อมูลจริงเก็บในฐาน dormify ไม่ได้เก็บใน Prisma Studio
 Prisma Studio เป็นหน้าดู/แก้ข้อมูล ใช้ phpMyAdmin หรือ Workbench แทนได้ โดยโค้ด Backend ยังใช้ Prisma ตามเดิม
+เพิ่ม phpMyAdmin แล้ววันที่ 14 พฤศจิกายน: `npm.cmd run db:admin` และเปิด http://127.0.0.1:8080 ดู [วิธีเข้าสู่ระบบและดูตาราง](PHPMYADMIN.md)
 
 | ส่วน | ไฟล์/ตำแหน่ง | ใช้ทำอะไร |
 |---|---|---|

@@ -97,6 +97,7 @@ try {
     const frontendUrl = `http://127.0.0.1:${frontendPort}`;
     const env = { ...process.env, DATABASE_URL: process.env.DATABASE_URL, JWT_SECRET: randomBytes(48).toString('hex'), PORT: '0', CLIENT_ORIGIN: frontendUrl };
     const admin = await prisma.user.create({ data: { email: adminEmail, password: await bcrypt.hash(password, 10), name: 'ผู้ดูแลทดสอบหน้าจอ', role: 'ADMIN' } });
+    await prisma.rentalPolicy.create({ data:{ holdHours:72, depositMonths:1, dueDays:5, createdBy:admin.id } });
     const dormitory = await prisma.property.create({ data: { name: 'หอพักทดสอบ DORMIFY', address: 'ที่อยู่สำหรับการทดสอบหน้าจอเท่านั้น', city: 'กรุงเทพมหานคร', type: 'HOSTEL', ownerId: admin.id, rules: 'ข้อกำหนดสำหรับทดสอบการแสดงผลภาษาไทย' } });
     const room = await prisma.room.create({ data: { propertyId: dormitory.id, roomNumber: '101', capacity: 2, price: 3500, type: 'AC' } });
     await prisma.room.create({ data: { propertyId: dormitory.id, roomNumber: '102', capacity: 1, price: 2800, type: 'NON-AC' } });
@@ -122,7 +123,7 @@ try {
         const marker = randomBytes(8).toString('hex');
         await cdp.evaluate(`window.__uiNavigationMarker = ${JSON.stringify(marker)}`);
         await cdp.send('Page.navigate', { url: frontendUrl + route });
-        await until(() => cdp.evaluate(`window.__uiNavigationMarker !== ${JSON.stringify(marker)} && document.readyState === 'complete' && !!document.querySelector('h1')`), 'page ' + route);
+        await until(() => cdp.evaluate(`window.__uiNavigationMarker !== ${JSON.stringify(marker)} && document.readyState === 'complete' && !!document.querySelector('h1, .empty-state h3')`), 'page ' + route);
     };
     const text = () => cdp.evaluate('document.body.innerText');
     const waitText = value => until(async () => (await text()).includes(value), value);
@@ -186,11 +187,11 @@ try {
         await until(() => cdp.evaluate('!!document.querySelector(\'a[href="/user"]\')'), 'account verification resumes');
         await navigate('/user');
     });
-    await check('User sidebar is responsive and unavailable features are honest', async () => {
+    await check('User sidebar is responsive and invoice empty state uses actual data', async () => {
         await waitText('ข้อมูลส่วนตัว'); await noOverflow('mobile user');
         await click('button[aria-controls="workspace-navigation"]');
         assert.equal(await cdp.evaluate('document.querySelector("#workspace-navigation").hasAttribute("inert")'), false);
-        await screenshot('user-mobile'); await click('a[href="/user/invoices"]'); await waitText('ส่วนนี้ยังไม่เปิดให้ใช้งาน');
+        await screenshot('user-mobile'); await click('a[href="/user/invoices"]'); await waitText('ยังไม่มีรายการ');
         assert.equal(await cdp.evaluate('!!document.querySelector("main form")'), false);
     });
     await check('User cannot gain Admin UI by changing cached role', async () => {
@@ -232,6 +233,64 @@ try {
         await waitText('ยืนยันการอนุมัติคำขอ'); await click('dialog button[type=submit]'); await waitText('บันทึกสถานะรายการ');
         assert.equal((await prisma.booking.findFirst({ where: { roomId: room.id } })).status, 'CONFIRMED');
     });
+    await check('Admin edits dormitory details and public website reflects persisted data', async () => {
+        await navigate('/admin/dormitory');
+        await click('button:has(svg.lucide-pencil)');
+        await fill('input[name=name]', 'DORMIFY Updated UI');
+        await fill('input[name=address]', 'Updated UI address');
+        await submit('form');
+        await until(async () => (await prisma.property.findUnique({ where: { id: dormitory.id } })).name === 'DORMIFY Updated UI', 'property saved');
+        await navigate('/'); await waitText('DORMIFY Updated UI');
+        await navigate('/admin/dormitory'); await waitText('Updated UI address');
+    });
+    await check('Admin edits room rent and rejects duplicate room numbers', async () => {
+        await navigate('/admin/rooms');
+        await waitText('102');
+        await click('button[aria-label="แก้ไขห้อง 102"]');
+        await fill('input[name=roomNumber]', '101');
+        await submit('form');
+        await waitText('เลขห้องนี้มีอยู่ในหอพักแล้ว');
+        await fill('input[name=roomNumber]', 'UI-EDIT-102');
+        await fill('input[name=price]', '4567.89');
+        await submit('form');
+        await until(async () => !!await prisma.room.findFirst({ where: { propertyId: dormitory.id, roomNumber: 'UI-EDIT-102', price: '4567.89' } }), 'room edit committed');
+        await navigate('/'); await waitText('UI-EDIT-102'); await waitText('4,567.89');
+    });
+    await check('Room deactivation hides public cards and direct links; reactivation restores them', async () => {
+        const edited = await prisma.room.findFirst({ where: { propertyId: dormitory.id, roomNumber: 'UI-EDIT-102' } });
+        await navigate('/admin/rooms'); await waitText('UI-EDIT-102');
+        await click('button[aria-label="ปิดใช้งานห้อง UI-EDIT-102"]');
+        await click('dialog button[type=submit]');
+        await until(async () => !(await prisma.room.findUnique({ where: { id: edited.id } })).isActive, 'room deactivated');
+        await navigate('/');
+        await until(() => cdp.evaluate('document.querySelectorAll("#rooms article").length >= 2'), 'public cards loaded');
+        assert.equal(await cdp.evaluate('document.querySelector("#rooms").innerText.includes("UI-EDIT-102")'), false);
+        await navigate('/rooms/' + edited.id); await waitText('ไม่พบห้องพักนี้');
+        await navigate('/admin/rooms'); await waitText('UI-EDIT-102');
+        await click('button[aria-label="เปิดใช้งานห้อง UI-EDIT-102"]');
+        await click('dialog button[type=submit]');
+        await until(async () => (await prisma.room.findUnique({ where: { id: edited.id } })).isActive, 'room reactivated');
+        await navigate('/'); await waitText('UI-EDIT-102');
+    });
+    await check('Admin cannot close a confirmed room and prior booking stays intact', async () => {
+        await navigate('/admin/rooms'); await waitText('101');
+        await click('button[aria-label="ปิดใช้งานห้อง 101"]');
+        await click('dialog button[type=submit]');
+        await waitText('ยังปิดห้องไม่ได้');
+        assert.equal((await prisma.room.findUnique({ where: { id: room.id } })).isActive, true);
+        assert.equal((await prisma.booking.findFirst({ where: { roomId: room.id } })).status, 'CONFIRMED');
+        await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' });
+    });
+    await check('Mobile room edit and confirmation dialog do not overflow', async () => {
+        await viewport(390, 844);
+        await navigate('/admin/rooms'); await waitText('UI-EDIT-102');
+        await click('button[aria-label="แก้ไขห้อง UI-EDIT-102"]');
+        await noOverflow('mobile room editor');
+        await click('form button[type=button]');
+        await click('button[aria-label="ปิดใช้งานห้อง UI-EDIT-102"]');
+        await noOverflow('mobile room confirmation');
+        await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' });
+    });
     await check('Tablet and mobile Admin layouts do not overflow', async () => {
         await navigate('/admin/rooms');
         for (const [width,height,label] of [[768,1024,'tablet'],[390,844,'mobile']]) {
@@ -241,10 +300,126 @@ try {
         await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' });
         await until(() => cdp.evaluate('document.querySelector("#workspace-navigation").hasAttribute("inert")'), 'Escape closes menu');
     });
+    const clickText = label => cdp.evaluate(`(() => { const button = [...document.querySelectorAll('button')].find(element => element.textContent.trim() === ${JSON.stringify(label)}); if (!button) throw Error('Button missing'); button.click(); })()`);
+    const select = async (selector, value) => {
+        await until(() => cdp.evaluate(`!!document.querySelector(${JSON.stringify(selector + ' option[value="' + value + '"]')})`), 'select option');
+        await cdp.evaluate(`(() => { const element = document.querySelector(${JSON.stringify(selector)}); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(element, ${JSON.stringify(String(value))}); element.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+    };
+    const fillArea = (selector, value) => cdp.evaluate(`(() => { const element = document.querySelector(${JSON.stringify(selector)}); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(element, ${JSON.stringify(value)}); element.dispatchEvent(new Event('input', {bubbles:true})); })()`);
+    const actualUser = await prisma.user.findUnique({ where: { email: userEmail } });
+    const contractNo = fixtures.scope + '-ui';
+    const readingYear = 6404 + 400 * (parseInt(fixtures.scope.slice(-4),16) % 7);
+    const leaseStart = readingYear + '-01-31', nextBoundary = readingYear + '-02-29';
+    let tenant, lease, invoice, transfer;
+    const localDate = new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Bangkok', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+    await viewport(1440, 1000);
+    await check('Admin creates a tenant bound to an existing User through the real form', async () => {
+        await navigate('/admin/tenants'); await waitText('เพิ่มผู้เช่า');
+        await until(() => cdp.evaluate('[...document.querySelectorAll("button")].some(b=>b.textContent.trim()==="เพิ่มผู้เช่า" && !b.disabled)'), 'tenant options ready');
+        await clickText('เพิ่มผู้เช่า'); await select('select[name=userId]', actualUser.id); await fill('input[name=name]', 'ผู้เช่าหน้าจอจริง'); await submit('form');
+        await waitText('บันทึกทะเบียนผู้เช่าแล้ว'); tenant = await prisma.tenantProfile.findUnique({ where: { userId: actualUser.id } }); assert.ok(tenant);
+    });
+    await check('Admin creates and activates a signed lease, converting the approved booking', async () => {
+        await navigate('/admin/contracts'); await waitText('เพิ่มสัญญาฉบับร่าง');
+        await until(() => cdp.evaluate('[...document.querySelectorAll("button")].some(b=>b.textContent.trim()==="เพิ่มสัญญาฉบับร่าง" && !b.disabled)'), 'lease options ready');
+        await clickText('เพิ่มสัญญาฉบับร่าง');
+        await fill('input[name=contractNo]', contractNo); await select('select[name=tenantId]', tenant.id); await select('select[name=roomId]', room.id);
+        const approved = await prisma.booking.findFirst({ where: { roomId: room.id, userId: actualUser.id, status: 'CONFIRMED' } });
+        await select('select[name=bookingId]', approved.id); await fill('input[name=startDate]', leaseStart); await fill('input[name=signedDate]', localDate); await fill('input[name=monthlyRent]', '3500'); await submit('form');
+        await waitText('บันทึกสัญญาฉบับร่างแล้ว'); await waitText(contractNo); await clickText('เริ่มใช้สัญญา'); await click('dialog[open] button[type=submit]'); await waitText('เริ่มใช้สัญญาแล้ว');
+        lease = await prisma.lease.findUnique({ where: { contractNo } }); assert.equal(lease.status, 'ACTIVE'); assert.equal(Number(lease.depositRequired), 3500); assert.equal((await prisma.booking.findUnique({ where:{id:approved.id} })).status, 'CONVERTED');
+    });
+    await check('Admin issues a real first-cycle invoice with advance rent only', async () => {
+        await navigate('/admin/invoices'); await select('select[name=leaseId]', lease.id); await submit('form'); await waitText('INV-');
+        invoice = await prisma.invoice.findFirst({ where: { leaseId: lease.id }, include:{items:true} }); assert.ok(invoice); assert.equal(invoice.items.length, 1); assert.equal(Number(invoice.totalAmount), 3500); await screenshot('admin-invoice');
+        assert.equal(/\?{4,}|�/.test(await text()),false,'UI contains corrupted text');
+    });
+    await check('Admin meter and rate forms calculate a real second-cycle bill', async () => {
+        await navigate('/admin/meters');
+        const meterForm = 'form:has(input[name=value])', rateForm = 'form:has(input[name=unitPrice])';
+        for(const [utilityType,price,opening,closing]of [['WATER','8','10','15'],['ELECTRICITY','4','100','120']]) {
+            await select(rateForm+' select[name=utilityType]',utilityType); await fill(rateForm+' input[name=unitPrice]',price); await fill(rateForm+' input[name=effectiveFrom]',leaseStart); await fill(rateForm+' input[name=sourceReference]',fixtures.scope); await submit(rateForm);
+            await until(async()=>await prisma.utilityRate.count({where:{createdBy:admin.id,utilityType}})===1,'rate persisted');
+            await until(()=>cdp.evaluate(`!document.querySelector(${JSON.stringify(rateForm+' button[type=submit]')}).disabled`),'rate form ready');
+            await select(meterForm+' select[name=roomId]',room.id); await select(meterForm+' select[name=utilityType]',utilityType);
+            for(const [readingDate,value]of [[leaseStart,opening],[nextBoundary,closing]]) {
+                await fill(meterForm+' input[name=readingDate]',readingDate); await fill(meterForm+' input[name=value]',value); await submit(meterForm);
+                await until(async()=>await prisma.meterReading.count({where:{roomId:room.id,utilityType,readingDate:new Date(readingDate)}})===1,'reading persisted');
+                await until(()=>cdp.evaluate(`!document.querySelector(${JSON.stringify(meterForm+' button[type=submit]')}).disabled`),'meter form ready');
+            }
+        }
+        await navigate('/admin/invoices'); await select('select[name=leaseId]',lease.id); await fill('input[name=cycleIndex]','2'); await submit('form');
+        await until(async()=>await prisma.invoice.count({where:{leaseId:lease.id,cycleIndex:1}})===1,'second bill persisted');
+        const second = await prisma.invoice.findUnique({where:{leaseId_cycleIndex:{leaseId:lease.id,cycleIndex:1}}}); assert.equal(Number(second.totalAmount),3620);
+        await waitText('฿3,620');
+    });
+    await check('User sees own contract and invoice, submits transfer and uploads private proof', async () => {
+        await login(userEmail); await navigate('/user/contract'); await waitText(contractNo); assert.equal((await text()).includes('เริ่มใช้สัญญา'), false);
+        await navigate('/user/bookings'); await waitText('ทำสัญญาแล้ว');
+        await navigate('/user/invoices'); await waitText(invoice.invoiceNo); assert.equal((await text()).includes('ออกบิลรายเดือน'), false);
+        await navigate('/user/payments'); await until(()=>cdp.evaluate('!!document.querySelector("select[name=invoiceId]")'),'payment form'); await submit('form');
+        assert.match(await cdp.evaluate('document.querySelector("select[name=invoiceId]").validationMessage'), /กรุณาเลือก/);
+        await select('select[name=invoiceId]', invoice.id); await submit('form'); await waitText('บันทึกรายการรอตรวจแล้ว');
+        transfer = await prisma.invoicePayment.findFirst({ where: { invoiceId:invoice.id } }); assert.equal(transfer.status, 'PENDING');
+        await until(() => cdp.evaluate('!!document.querySelector("input[type=file]")'), 'proof input');
+        const proofFile = path.join(artifacts, 'fixture-proof.png'); fs.writeFileSync(proofFile, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aH6kAAAAASUVORK5CYII=', 'base64'));
+        const { root: domRoot } = await cdp.send('DOM.getDocument'); const { nodeId } = await cdp.send('DOM.querySelector', { nodeId:domRoot.nodeId, selector:'input[type=file]' });
+        await cdp.send('DOM.setFileInputFiles', {nodeId, files:[proofFile]}); await waitText('แนบหลักฐานแล้ว'); assert.ok(await prisma.paymentProof.findUnique({ where:{paymentId:transfer.id} }));
+        await viewport(390,844); await noOverflow('mobile payment form and table'); await screenshot('user-payment-mobile'); await viewport(1440,1000);
+    });
+    await check('User submits maintenance and reads only personal notifications', async () => {
+        await navigate('/user/maintenance'); await select('select[name=leaseId]', lease.id); await fill('input[name=title]', 'แจ้งซ่อมจากหน้าจอ'); await fillArea('textarea[name=description]', 'ไฟห้องเสียสำหรับการทดสอบ'); await submit('form'); await waitText('ส่งเรื่องแจ้งซ่อมแล้ว');
+        assert.equal(await prisma.maintenanceRequest.count({where:{leaseId:lease.id}}),1);
+        await navigate('/user/notifications'); await waitText('ใบแจ้งหนี้ใหม่');
+        await cdp.send('Fetch.enable',{patterns:[{urlPattern:'*/api/operations/notifications/*/read',requestStage:'Request'}]});
+        await clickText('ทำเครื่องหมายว่าอ่านแล้ว');
+        await until(()=>Promise.resolve(cdp.pausedRequests.some(request=>/\/notifications\/\d+\/read$/.test(request.request.url))),'intercept read mutation');
+        const pausedRead = cdp.pausedRequests.find(request=>/\/notifications\/\d+\/read$/.test(request.request.url));
+        await cdp.send('Fetch.failRequest',{requestId:pausedRead.requestId,errorReason:'ConnectionRefused'}); await cdp.send('Fetch.disable');
+        await waitText('เชื่อมต่อระบบไม่ได้'); await clickText('ทำเครื่องหมายว่าอ่านแล้ว');
+        await until(async()=>await prisma.notification.count({where:{userId:actualUser.id,readAt:{not:null}}})>0,'notification read saved');
+    });
+    await check('Admin verifies transfer via confirmation; User payment history updates', async () => {
+        await login(adminEmail); await navigate('/admin/payments'); await waitText(invoice.invoiceNo); await clickText('ยืนยันรับเงิน'); await click('dialog[open] button[type=submit]'); await waitText('ยืนยันรับเงินแล้ว');
+        assert.equal((await prisma.invoice.findUnique({where:{id:invoice.id}})).status,'PAID'); assert.equal(await prisma.invoiceSettlement.count({where:{invoiceId:invoice.id}}),1);
+        await login(userEmail); await navigate('/user/history'); await waitText(invoice.invoiceNo); await waitText('ยืนยันแล้ว');
+        await login(adminEmail);
+    });
+    await check('Admin resolves maintenance and publishes news through actual forms', async () => {
+        await navigate('/admin/maintenance'); await waitText('แจ้งซ่อมจากหน้าจอ'); await clickText('อัปเดตงาน'); await select('select[name=status]','RESOLVED'); await fillArea('textarea[name=resolution]','เปลี่ยนหลอดไฟเรียบร้อย'); await submit('form:has(select[name=status])'); await waitText('อัปเดตงานแล้ว');
+        assert.equal((await prisma.maintenanceRequest.findFirst({where:{leaseId:lease.id}})).status,'RESOLVED');
+        await navigate('/admin/announcements'); await fill('input[name=title]',fixtures.scope); await fillArea('textarea[name=message]','ข่าวสารจริงจากการทดสอบหน้าจอ'); await submit('form');
+        await until(async()=>await prisma.announcement.count({where:{createdBy:admin.id,title:fixtures.scope}})===1,'news persisted'); await waitText('ข่าวสารจริงจากการทดสอบหน้าจอ');
+    });
+    await check('Admin records expense, filters reports and changes policy without changing signed lease', async () => {
+        await navigate('/admin/reports'); await fill('input[name=description]',fixtures.scope); await fill('input[name=category]','ซ่อมบำรุง'); await fill('input[name=amount]','100.25'); await fill('input[name=expenseDate]',localDate); await submit('form:has(input[name=category])');
+        await until(async()=>await prisma.expense.count({where:{recordedBy:admin.id}})===1,'expense persisted'); await waitText('฿100.25');
+        await fill('input[name=from]',localDate); await fill('input[name=to]',localDate); await submit('form:has(input[name=from])'); await waitText('฿3,500');
+        await navigate('/admin/dormitory'); await until(()=>cdp.evaluate('!!document.querySelector("input[name=holdHours]")'),'policy loaded'); await fill('input[name=holdHours]','48'); await submit('form:has(input[name=holdHours])');
+        await until(async()=>(await prisma.rentalPolicy.findFirst({orderBy:{id:'desc'}})).holdHours===48,'policy persisted'); assert.equal((await prisma.lease.findUnique({where:{id:lease.id}})).dueDaysSnapshot,5);
+        await navigate('/admin/audit'); await fill('input[name=search]','ISSUE_INVOICE'); await submit('form'); await waitText('ออกบิล');
+    });
+    await check('Admin receives deposit, ends lease and records refund separately', async () => {
+        const form = 'form:has(select[name=kind])';
+        await navigate('/admin/payments'); await select(form+' select[name=leaseId]',lease.id); await fill(form+' input[name=amount]','3500'); await submit(form); await waitText('บันทึกเงินประกันแล้ว');
+        assert.equal(await prisma.depositEntry.count({where:{leaseId:lease.id,kind:'RECEIPT'}}),1);
+        await navigate('/admin/contracts'); await waitText(contractNo); await clickText('จบสัญญา'); await click('dialog[open] button[type=submit]'); await waitText('จบสัญญาแล้ว');
+        await navigate('/admin/payments'); await select(form+' select[name=leaseId]',lease.id); await select(form+' select[name=kind]','REFUND'); await fill(form+' input[name=amount]','3500'); await submit(form); await waitText('บันทึกเงินประกันแล้ว');
+        assert.equal(await prisma.depositEntry.count({where:{leaseId:lease.id,kind:'REFUND'}}),1); assert.equal((await prisma.room.findUnique({where:{id:room.id}})).isAvailable,true);
+    });
+    await check('New Admin pages render actual data on mobile without page overflow', async () => {
+        await viewport(390,844);
+        for(const [route,label]of [['/admin/meters','บันทึกมิเตอร์'],['/admin/reports','รายงาน'],['/admin/audit','ประวัติ'],['/admin/announcements','ข่าวสาร'],['/admin/dormitory','นโยบาย']]) {
+            await navigate(route); await waitText(label); await noOverflow(route);
+        }
+        await screenshot('admin-policy-mobile');
+    });
     await check('Reduced motion is respected and keyboard focus is visible', async () => {
         await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
         assert.equal(await cdp.evaluate('matchMedia("(prefers-reduced-motion: reduce)").matches'), true);
         assert.equal(await cdp.evaluate('(() => {const element=document.createElement("div");element.className="fade-in";document.body.append(element);const name=getComputedStyle(element).animationName;element.remove();return name;})()'), 'none');
+        await cdp.send('Input.dispatchKeyEvent', { type:'keyDown', key:'Tab', code:'Tab', windowsVirtualKeyCode:9 });
+        await cdp.send('Input.dispatchKeyEvent', { type:'keyUp', key:'Tab', code:'Tab', windowsVirtualKeyCode:9 });
         await cdp.evaluate('document.querySelector("button[aria-controls=workspace-navigation]").focus()');
         const style = await cdp.evaluate('({width:getComputedStyle(document.activeElement).outlineWidth,style:getComputedStyle(document.activeElement).outlineStyle})');
         assert.notEqual(style.style, 'none'); assert.notEqual(style.width, '0px');

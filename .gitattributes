@@ -1,0 +1,6 @@
+# Keep files checked by Prettier consistent across Windows and other machines.
+client/src/** text eol=lf
+client/test/** text eol=lf
+client/vite.config.ts text eol=lf
+client/.eslintrc.cjs text eol=lf
+client/.prettierrc.json text eol=lf

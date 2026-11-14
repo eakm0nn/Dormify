@@ -6,6 +6,7 @@ const { body, validationResult } = require('express-validator');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env'), quiet: true });
 const prisma = require('../src/lib/prisma');
 const { validateDatabaseUrl } = require('../src/lib/database-config');
+const { audit } = require('../src/lib/domain');
 
 const readCredentials = async () => {
     if (!process.stdin.isTTY) {
@@ -56,7 +57,11 @@ const main = async () => {
     if (await prisma.user.findUnique({ where: { email } })) {
         throw new Error('Email already exists. No existing account was changed or promoted.');
     }
-    await prisma.user.create({ data: { email, name, password: await bcrypt.hash(password, 10), role: 'ADMIN' } });
+    const hashed = await bcrypt.hash(password, 10);
+    await prisma.$transaction(async tx => {
+        const user = await tx.user.create({ data: { email, name, password: hashed, role: 'ADMIN' } });
+        await audit(tx, { userId: user.id, name: user.name }, 'CREATE_ADMIN', 'User', user.id, 'สร้างบัญชี Admin ผ่านคำสั่ง Local');
+    });
     console.log('Admin created successfully. Password is not stored in plaintext or printed.');
 };
 

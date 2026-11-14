@@ -1,5 +1,13 @@
 import axios from 'axios';
 const messages: Record<string, string> = {
+  'Room not found': 'ไม่พบห้องพักนี้',
+  'Unsupported fields': 'มีข้อมูลที่ไม่รองรับ กรุณาตรวจสอบแบบฟอร์ม',
+  'Room active status must be a boolean': 'สถานะเปิดใช้งานห้องไม่ถูกต้อง',
+  'Cannot change room details while a confirmed booking exists':
+    'ห้องมีคำขออนุมัติแล้ว จึงยังแก้เลขห้อง ประเภท หรือจำนวนผู้พักไม่ได้ ปรับได้เฉพาะค่าเช่าสำหรับคำขอใหม่',
+  'Resolve pending or confirmed bookings before closing this room':
+    'ยังปิดห้องไม่ได้ มีคำขอรอดำเนินการหรืออนุมัติแล้ว กรุณาจัดการรายการเช่าก่อน',
+  'Room changed. Refresh and try again': 'ข้อมูลห้องเปลี่ยนแล้ว กรุณาโหลดข้อมูลใหม่แล้วลองอีกครั้ง',
   'Food service must be a boolean': 'กรุณาระบุว่าหอพักมีบริการอาหารหรือไม่',
   'ID must be a positive integer': 'รหัสรายการต้องเป็นจำนวนเต็มบวก',
   'Start date must be valid': 'กรุณาระบุวันเริ่มต้นให้ถูกต้อง',
@@ -33,7 +41,10 @@ const messages: Record<string, string> = {
 };
 export const thaiError = (error: unknown, fallback = 'ไม่สามารถดำเนินการได้ กรุณาลองอีกครั้ง') => {
   const response = axios.isAxiosError<{ error?: string }>(error) ? error.response : undefined;
-  const message = typeof error === 'string' ? error : response?.data?.error;
+  const message =
+    typeof error === 'string'
+      ? error
+      : (response?.data?.error ?? (error instanceof Error ? error.message : undefined));
   if (message && messages[message]) return messages[message];
   if (message && /[ก-๙]/.test(message)) return message;
   if (response?.status === 401) return 'กรุณาเข้าสู่ระบบอีกครั้ง';

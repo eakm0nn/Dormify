@@ -26,7 +26,7 @@ const Home = () => {
   const { dormitory, loading, error, refresh } = useDormitory();
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState(initialFilters);
-  const rooms = dormitory?.rooms ?? emptyRooms;
+  const rooms = (dormitory?.rooms ?? emptyRooms).filter((room) => room.isActive);
   const available = rooms.filter((room) => room.isAvailable);
   const filtered = useMemo(
     () =>

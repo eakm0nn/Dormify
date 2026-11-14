@@ -238,7 +238,7 @@ const PropertyDetails = () => {
     : dormitory && String(dormitory.id) === id
       ? dormitory.rooms?.[0]
       : null;
-  if (!room || !dormitory)
+  if (!room || !room.isActive || !dormitory)
     return (
       <div className="container-page py-10">
         <div className="surface">

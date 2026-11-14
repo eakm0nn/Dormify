@@ -153,15 +153,16 @@ node client/scripts/ui-smoke.mjs
 ใช้ SQLite ชั่วคราวแยกจาก `dev.db` พร้อม Fixtures เฉพาะทดสอบ ไม่มี Mock API responses
 ข้อมูลในภาพหน้าจอเป็นข้อมูลจากฐานทดสอบ **ไม่ใช่ข้อมูลจริงของหอพัก** และไม่ถูกเพิ่มลงฐาน Local
 แก้ Race ในสคริปต์ทดสอบให้รอ Document/ข้อมูลโหลดเสร็จก่อนกดปุ่ม ไม่แก้ Business Logic เพื่อให้ Test ผ่าน
-Artifacts อยู่ใน `client/.ui-artifacts/` ซึ่งถูก Ignore:
+Artifacts ของการทดสอบรอบเดิมสร้างไว้ใน `client/.ui-artifacts/` ซึ่งถูก Ignore:
+อัปเดต 14 พฤศจิกายน 2026: ลบภาพ/JSON เหล่านี้ในงานเก็บกวาดแล้ว รายการด้านล่างเป็นชื่อไฟล์หลักฐานในอดีต ไม่ใช่ไฟล์ที่ยังเปิดได้ รัน Browser Tests ใหม่เมื่อต้องการสร้างหลักฐานรอบใหม่
 
-- [หน้า Public Desktop](../client/.ui-artifacts/public-desktop.png)
-- [หน้า Public Mobile](../client/.ui-artifacts/public-mobile.png)
-- [หน้า Admin Desktop](../client/.ui-artifacts/admin-desktop.png)
-- [หน้า Admin Tablet](../client/.ui-artifacts/admin-tablet.png)
-- [เมนู Admin Mobile](../client/.ui-artifacts/admin-mobile-menu.png)
-- [หน้า User Mobile](../client/.ui-artifacts/user-mobile.png)
-- [หน้า Login Mobile](../client/.ui-artifacts/login-mobile.png)
+- หน้า Public Desktop: `public-desktop.png`
+- หน้า Public Mobile: `public-mobile.png`
+- หน้า Admin Desktop: `admin-desktop.png`
+- หน้า Admin Tablet: `admin-tablet.png`
+- เมนู Admin Mobile: `admin-mobile-menu.png`
+- หน้า User Mobile: `user-mobile.png`
+- หน้า Login Mobile: `login-mobile.png`
 - ผลรายกลุ่ม: `client/.ui-artifacts/results.json`
 
 Chrome/Vite/Backend ที่เปิดสำหรับทดสอบหยุดเมื่อจบสคริปต์

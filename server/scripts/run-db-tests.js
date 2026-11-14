@@ -2,7 +2,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const server = path.resolve(__dirname, '..');
 const mode = process.argv[2];
-const args = mode === 'api' ? ['--test', path.join(server, 'test/phase0.test.js')]
+const args = mode === 'api' ? ['--test', '--test-concurrency=1', path.join(server, 'test/phase0.test.js'), path.join(server, 'test/operations.test.js')]
     : mode === 'ui' ? [path.resolve(server, '../client/scripts/ui-smoke.mjs')] : null;
 if (!args) {
     console.error('Choose api or ui.');

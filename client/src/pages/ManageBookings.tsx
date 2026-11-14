@@ -124,6 +124,14 @@ const ManageBookings = () => {
                           <span className={`badge whitespace-nowrap ${status.className}`}>
                             {status.label}
                           </span>
+                          {booking.status === 'CONFIRMED' && booking.holdExpiresAt && (
+                            <p className="mt-2 text-xs text-muted">
+                              กันถึง{' '}
+                              {new Date(booking.holdExpiresAt).toLocaleString('th-TH', {
+                                timeZone: 'Asia/Bangkok',
+                              })}
+                            </p>
+                          )}
                         </td>
                         <td>
                           {booking.status === 'PENDING' ? (
@@ -147,6 +155,15 @@ const ManageBookings = () => {
                                 ไม่อนุมัติ
                               </Button>
                             </div>
+                          ) : booking.status === 'CONFIRMED' ? (
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              disabled={updating}
+                              onClick={() => confirm(booking, 'CANCELLED')}
+                            >
+                              ยกเลิกการกันห้อง
+                            </Button>
                           ) : (
                             <span className="text-xs text-muted">ดำเนินการแล้ว</span>
                           )}
@@ -170,7 +187,13 @@ const ManageBookings = () => {
       >
         <form onSubmit={submit}>
           <h2 id="booking-confirm-title" className="text-xl">
-            ยืนยันการ{action?.status === 'CONFIRMED' ? 'อนุมัติ' : 'ไม่อนุมัติ'}คำขอ
+            ยืนยันการ
+            {action?.status === 'CONFIRMED'
+              ? 'อนุมัติ'
+              : action?.status === 'CANCELLED'
+                ? 'ยกเลิก'
+                : 'ไม่อนุมัติ'}
+            คำขอ
           </h2>
           <p className="mt-3 text-sm text-muted">
             รายการ #{action?.booking.id} ห้อง {action?.booking.room?.roomNumber} ของ{' '}

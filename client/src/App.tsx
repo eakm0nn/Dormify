@@ -19,6 +19,15 @@ const AdminOverview = lazy(() => import('./pages/AdminOverview'));
 const AdminRooms = lazy(() => import('./pages/AdminRooms'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Unavailable = lazy(() => import('./pages/Unavailable'));
+const Tenants = lazy(() => import('./pages/Tenants'));
+const Leases = lazy(() => import('./pages/Leases'));
+const Meters = lazy(() => import('./pages/Meters'));
+const Invoices = lazy(() => import('./pages/Invoices'));
+const Payments = lazy(() => import('./pages/Payments'));
+const Maintenance = lazy(() => import('./pages/Maintenance'));
+const Reports = lazy(() => import('./pages/Reports'));
+const News = lazy(() => import('./pages/News'));
+const Audit = lazy(() => import('./pages/Audit'));
 
 const ProtectedRoute = ({ children, roles }: { children: React.ReactNode; roles?: Role[] }) => {
   const { user, loading } = useAuth();
@@ -60,6 +69,15 @@ const App = () => (
           <Route path="rooms" element={<AdminRooms />} />
           <Route path="dormitory" element={<AddProperty />} />
           <Route path="bookings" element={<ManageBookings />} />
+          <Route path="tenants" element={<Tenants />} />
+          <Route path="contracts" element={<Leases />} />
+          <Route path="meters" element={<Meters />} />
+          <Route path="invoices" element={<Invoices />} />
+          <Route path="payments" element={<Payments />} />
+          <Route path="maintenance" element={<Maintenance />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="announcements" element={<News />} />
+          <Route path="audit" element={<Audit />} />
           {adminMenus
             .filter((menu) => !menu.ready)
             .map((menu) => (
@@ -80,7 +98,13 @@ const App = () => (
         >
           <Route index element={<Profile />} />
           <Route path="bookings" element={<MyBookings />} />
-          <Route path="room" element={<MyBookings roomView />} />
+          <Route path="room" element={<Leases />} />
+          <Route path="contract" element={<Leases />} />
+          <Route path="invoices" element={<Invoices />} />
+          <Route path="payments" element={<Payments />} />
+          <Route path="history" element={<Payments history />} />
+          <Route path="maintenance" element={<Maintenance />} />
+          <Route path="notifications" element={<News />} />
           {userMenus
             .filter((menu) => !menu.ready && menu.to !== '/user/room')
             .map((menu) => (

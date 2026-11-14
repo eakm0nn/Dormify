@@ -4,9 +4,12 @@ import { ErrorMessage, Loading } from '../components/Feedback';
 import { useDormitory } from '../context/DormitoryContext';
 import { useApiResource } from '../hooks/useApiResource';
 import type { BookingSummary } from '../types/api';
+import type { Report } from '../types/operations';
+import { money } from '../utils/format';
 
 const AdminOverview = () => {
   const { dormitory, loading, error, refresh } = useDormitory();
+  const report = useApiResource<Report>('/api/operations/reports', 'โหลดสรุปการเงินไม่ได้');
   const {
     data: summary,
     error: bookingError,
@@ -69,12 +72,35 @@ const AdminOverview = () => {
           </div>
         </section>
         <section className="surface p-6">
-          <span className="badge badge-warning mb-3">ยังไม่พัฒนา</span>
           <h2 className="text-lg">การเงิน สัญญา และรายงาน</h2>
-          <p className="mt-2 text-sm leading-7 text-muted">
-            ระบบสัญญา มิเตอร์ ใบแจ้งหนี้ การชำระเงิน แจ้งซ่อม และรายงานยังไม่เปิดใช้งาน
-            เมนูที่เกี่ยวข้องระบุสถานะไว้เพื่อให้ตรวจสอบได้ชัดเจน
-          </p>
+          {report.error && <ErrorMessage message={report.error} onRetry={report.refresh} />}
+          {report.loading ? (
+            <Loading />
+          ) : (
+            report.data && (
+              <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <dt className="text-muted">รายรับยืนยันแล้วทั้งหมด</dt>
+                  <dd className="mt-1 font-semibold">{money(report.data.receipts)}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted">บิลค้างชำระทั้งหมด</dt>
+                  <dd className="mt-1 font-semibold">{money(report.data.outstanding)}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted">สัญญาที่ใช้งาน</dt>
+                  <dd className="mt-1 font-semibold">{report.data.activeLeases}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted">เรื่องซ่อมค้าง</dt>
+                  <dd className="mt-1 font-semibold">{report.data.openRepairs}</dd>
+                </div>
+              </dl>
+            )
+          )}
+          <Link to="/admin/reports" className="btn btn-outline mt-5">
+            ดูรายงานและบันทึกรายจ่าย
+          </Link>
         </section>
       </div>
     </>

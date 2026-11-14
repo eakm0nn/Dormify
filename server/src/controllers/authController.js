@@ -4,6 +4,7 @@ const { randomUUID } = require('node:crypto');
 const prisma = require('../lib/prisma');
 const { jwtSecret } = require('../config');
 const { hashToken, publicUser, isSupportedRole } = require('../lib/session');
+const { audit } = require('../lib/domain');
 
 const register = async (req, res) => {
     try {
@@ -13,8 +14,11 @@ const register = async (req, res) => {
         }
         const existingUser = await prisma.user.findUnique({ where: { email } });
         if (existingUser) return res.status(409).json({ error: 'User already exists' });
-        const user = await prisma.user.create({
-            data: { email, password: await bcrypt.hash(password, 10), name, role: 'USER', phone, address },
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const user = await prisma.$transaction(async tx => {
+            const created = await tx.user.create({ data: { email, password: hashedPassword, name, role: 'USER', phone, address } });
+            await audit(tx, { userId: created.id, name: created.name }, 'REGISTER', 'User', created.id, 'สมัครบัญชีผู้ใช้งาน');
+            return created;
         });
         res.status(201).json({ message: 'User registered successfully', userId: user.id });
     } catch (error) {
@@ -39,9 +43,10 @@ const login = async (req, res) => {
             algorithm: 'HS256', expiresIn: '1d', jwtid: sessionId,
         });
         const claims = jwt.decode(token);
-        await prisma.authSession.create({ data: {
-            id: sessionId, userId: user.id, tokenHash: hashToken(token), expiresAt: new Date(claims.exp * 1000),
-        } });
+        await prisma.$transaction(async tx => {
+            await tx.authSession.create({ data: { id: sessionId, userId: user.id, tokenHash: hashToken(token), expiresAt: new Date(claims.exp * 1000) } });
+            await audit(tx, { userId: user.id, name: user.name }, 'LOGIN', 'User', user.id, 'เข้าสู่ระบบสำเร็จ');
+        });
         res.set('Cache-Control', 'no-store');
         res.json({ token, user: publicUser(user) });
     } catch {
@@ -56,8 +61,9 @@ const me = (req, res) => {
 
 const logout = async (req, res) => {
     try {
-        await prisma.authSession.updateMany({
-            where: { id: req.sessionId, revokedAt: null }, data: { revokedAt: new Date() },
+        await prisma.$transaction(async tx => {
+            await tx.authSession.updateMany({ where: { id: req.sessionId, revokedAt: null }, data: { revokedAt: new Date() } });
+            await audit(tx, req.user, 'LOGOUT', 'User', req.user.userId, 'ออกจากระบบ');
         });
         res.json({ message: 'Logged out successfully' });
     } catch {

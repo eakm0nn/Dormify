@@ -83,6 +83,15 @@ const MyBookings = ({ roomView = false }) => {
                     ผู้ดูแลกำลังตรวจสอบคำขอของคุณ กรุณาติดตามสถานะจากหน้านี้
                   </p>
                 )}
+                {booking.status === 'CONFIRMED' && booking.holdExpiresAt && (
+                  <p className="notice notice-info mt-3 text-sm">
+                    กันห้องถึง{' '}
+                    {new Date(booking.holdExpiresAt).toLocaleString('th-TH', {
+                      timeZone: 'Asia/Bangkok',
+                    })}{' '}
+                    กรุณาติดต่อหอพักเพื่อนัดทำสัญญา
+                  </p>
+                )}
               </article>
             );
           })}

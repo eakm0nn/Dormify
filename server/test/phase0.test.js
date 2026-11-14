@@ -285,6 +285,105 @@ test('Admin/User authentication: real HTTP API with scoped MySQL fixtures', { ti
             pendingBookings: await prisma.booking.count({ where: { status: 'PENDING', room: { propertyId } } }),
         });
     });
+    await t.test('only Admin can edit property details; identity and relations stay intact', async () => {
+        const original = await prisma.property.findUnique({ where: { id: propertyId } });
+        const values = { name: 'Updated dormitory', address: 'Updated address', city: 'Bangkok', type: 'HOSTEL', rules: 'Updated rules', hasMess: false };
+        const endpoint = '/api/properties/' + propertyId;
+        assert.equal((await request(endpoint, 'PUT', values)).status, 401);
+        assert.equal((await request(endpoint, 'PUT', values, userToken)).status, 403);
+        for (const body of [{ ...values, name: ' ' }, { ...values, address: '' }, { ...values, hasMess: 'false' }, { ...values, ownerId: original.ownerId + 1 }]) {
+            assert.equal((await request(endpoint, 'PUT', body, adminToken)).status, 400);
+        }
+        assert.equal((await request('/api/properties/1junk', 'PUT', values, adminToken)).status, 400);
+        assert.equal((await request('/api/properties/2147483647', 'PUT', values, adminToken)).status, 404);
+        const result = await request(endpoint, 'PUT', values, adminToken);
+        assert.equal(result.status, 200);
+        assert.equal(result.data.ownerId, original.ownerId);
+        assert.equal(result.data.id, original.id);
+        assert.equal((await request(endpoint)).data.name, values.name);
+    });
+    await t.test('room edits validate fields and duplicates without rewriting prior rent quotes', async () => {
+        const created = await prisma.room.create({ data: { propertyId, roomNumber: 'EDIT-101', capacity: 2, price: 3000, type: 'AC' } });
+        const booking = await request('/api/bookings', 'POST', { roomId: created.id, startDate: '2027-01-01', endDate: '2027-02-01' }, userToken);
+        assert.equal(booking.status, 201);
+        const endpoint = '/api/properties/rooms/' + created.id;
+        const values = { roomNumber: ' EDIT-102 ', capacity: 3, price: '3456.78', type: 'NON-AC' };
+        assert.equal((await request(endpoint, 'PUT', values)).status, 401);
+        assert.equal((await request(endpoint, 'PUT', values, userToken)).status, 403);
+        for (const body of [{ ...values, roomNumber: '' }, { ...values, price: '-1' }, { ...values, price: '123.001' }, { ...values, capacity: 0 }, { ...values, type: 'BAD' }, { ...values, isAvailable: true }, { ...values, propertyId }]) {
+            assert.equal((await request(endpoint, 'PUT', body, adminToken)).status, 400);
+        }
+        assert.equal((await request('/api/properties/rooms/1junk', 'PUT', values, adminToken)).status, 400);
+        assert.equal((await request('/api/properties/rooms/2147483647', 'PUT', values, adminToken)).status, 404);
+        assert.equal((await request(endpoint, 'PUT', { ...values, roomNumber: 'TEST-101' }, adminToken)).status, 409);
+        const edited = await request(endpoint, 'PUT', values, adminToken);
+        assert.equal(edited.status, 200);
+        assert.equal(edited.data.roomNumber, 'EDIT-102');
+        assert.equal(edited.data.price, '3456.78');
+        assert.equal(edited.data.id, created.id);
+        assert.equal(edited.data.isActive, true);
+        assert.equal((await prisma.booking.findUnique({ where: { id: booking.data.booking.id } })).totalAmount.toString(), '3000');
+        assert.equal((await request('/api/bookings/' + booking.data.booking.id + '/status', 'PUT', { status: 'CONFIRMED' }, adminToken)).status, 200);
+        const current = { ...values, roomNumber: 'EDIT-102' };
+        assert.equal((await request(endpoint, 'PUT', { ...current, capacity: 4 }, adminToken)).status, 409);
+        assert.equal((await request(endpoint, 'PUT', { ...current, price: '4000' }, adminToken)).status, 200);
+        assert.equal((await prisma.room.findUnique({ where: { id: created.id } })).isAvailable, false);
+        assert.equal((await prisma.booking.findUnique({ where: { id: booking.data.booking.id } })).totalAmount.toString(), '3000');
+    });
+    await t.test('deactivation guards active requests, preserves history and can be reversed', async () => {
+        const room = await prisma.room.create({ data: { propertyId, roomNumber: 'CLOSE-101', capacity: 1, price: 2000, type: 'AC' } });
+        const endpoint = '/api/properties/rooms/' + room.id + '/status';
+        const body = { roomId: room.id, startDate: '2027-01-01', endDate: '2027-02-01' };
+        assert.equal((await request(endpoint, 'PATCH', { isActive: false })).status, 401);
+        assert.equal((await request(endpoint, 'PATCH', { isActive: false }, userToken)).status, 403);
+        for (const payload of [{ isActive: 'false' }, {}, { isActive: 0 }, { isActive: false, isAvailable: true }]) assert.equal((await request(endpoint, 'PATCH', payload, adminToken)).status, 400);
+        assert.equal((await request('/api/properties/rooms/2147483647/status', 'PATCH', { isActive: false }, adminToken)).status, 404);
+        const booking = await request('/api/bookings', 'POST', body, userToken);
+        assert.equal((await request(endpoint, 'PATCH', { isActive: false }, adminToken)).status, 409);
+        assert.equal((await request('/api/bookings/' + booking.data.booking.id + '/status', 'PUT', { status: 'CONFIRMED' }, adminToken)).status, 200);
+        assert.equal((await request(endpoint, 'PATCH', { isActive: false }, adminToken)).status, 409);
+        assert.equal((await request('/api/bookings/' + booking.data.booking.id + '/status', 'PUT', { status: 'CANCELLED' }, adminToken)).status, 200);
+        const summaryBefore = (await request('/api/bookings/summary?propertyId=' + propertyId, 'GET', undefined, adminToken)).data;
+        const closed = await request(endpoint, 'PATCH', { isActive: false }, adminToken);
+        assert.equal(closed.status, 200);
+        assert.equal(closed.data.isAvailable, true);
+        assert.equal(closed.data.isActive, false);
+        assert.equal((await request(endpoint, 'PATCH', { isActive: false }, adminToken)).status, 200);
+        assert.equal((await request('/api/bookings', 'POST', body, userToken)).status, 409);
+        assert.equal((await request('/api/properties/available-rooms')).data.some(item => item.id === room.id), false);
+        const summaryAfter = (await request('/api/bookings/summary?propertyId=' + propertyId, 'GET', undefined, adminToken)).data;
+        assert.equal(summaryAfter.totalRooms, summaryBefore.totalRooms);
+        assert.equal(summaryAfter.availableRooms, summaryBefore.availableRooms - 1);
+        const history = (await request('/api/bookings/my-bookings', 'GET', undefined, userToken)).data.find(item => item.id === booking.data.booking.id);
+        assert.equal(history.status, 'CANCELLED');
+        assert.equal(history.room.isActive, false);
+        assert.equal((await request(endpoint, 'PATCH', { isActive: true }, adminToken)).status, 200);
+        assert.equal((await request('/api/bookings', 'POST', body, userToken)).status, 201);
+        const legacy = await prisma.room.create({ data: { propertyId, roomNumber: 'CLOSE-LEGACY', capacity: 1, price: 1000, type: 'AC', isAvailable: false } });
+        const legacyUrl = '/api/properties/rooms/' + legacy.id + '/status';
+        await request(legacyUrl, 'PATCH', { isActive: false }, adminToken);
+        await request(legacyUrl, 'PATCH', { isActive: true }, adminToken);
+        assert.equal((await prisma.room.findUnique({ where: { id: legacy.id } })).isAvailable, false);
+    });
+    await t.test('a concurrent booking and deactivation never leave an active request in a closed room', async () => {
+        for (let attempt = 0; attempt < 3; attempt++) {
+            const room = await prisma.room.create({ data: { propertyId, roomNumber: 'CLOSE-RACE-' + attempt, capacity: 1, price: 2000, type: 'AC' } });
+            const [booking, close] = await Promise.all([
+                request('/api/bookings', 'POST', { roomId: room.id, startDate: '2027-01-01', endDate: '2027-02-01' }, userToken),
+                request('/api/properties/rooms/' + room.id + '/status', 'PATCH', { isActive: false }, adminToken),
+            ]);
+            assert.ok((booking.status === 201 && close.status === 409) || (booking.status === 409 && close.status === 200));
+            const current = await prisma.room.findUnique({ where: { id: room.id } });
+            const requests = await prisma.booking.count({ where: { roomId: room.id, status: { in: ['PENDING', 'CONFIRMED'] } } });
+            assert.equal(!current.isActive && requests > 0, false);
+        }
+    });
+    await t.test('approval cannot bypass an inactive room, including legacy data', async () => {
+        const room = await prisma.room.create({ data: { propertyId, roomNumber: 'INACTIVE-LEGACY', capacity: 1, price: 2000, type: 'AC', isActive: false } });
+        const booking = await prisma.booking.create({ data: { roomId: room.id, userId: jwt.decode(userToken).userId, startDate: new Date('2027-01-01'), endDate: new Date('2027-02-01'), status: 'PENDING', totalAmount: 2000 } });
+        assert.equal((await request('/api/bookings/' + booking.id + '/status', 'PUT', { status: 'CONFIRMED' }, adminToken)).status, 409);
+        assert.equal((await prisma.room.findUnique({ where: { id: room.id } })).isAvailable, true);
+    });
     await t.test('logout revokes only the authenticated session, including replay protection', async () => {
         const secondToken = await login(`user@${runTag}.example.test`);
         revokedToken = userToken;

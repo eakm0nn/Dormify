@@ -18,6 +18,186 @@
 
 ## ประวัติ
 
+### 2026-11-14 — บันทึกสรุปสิ่งที่ทำและจุดเริ่มต่อ (Asia/Bangkok)
+
+- คำขอ: ผู้ใช้ให้บันทึกสิ่งที่ทำแล้ว หลังเพิ่มข้อมูลทดสอบและสรุประบบที่ยังเหลือ
+- ทำแล้วในรอบนี้: ตรวจ PROJECT_STATUS/WORK_LOG/BUSINESS_RULES และ Git status แล้วเพิ่มสรุปส่งต่อใน PROJECT_STATUS.md โดยคงประวัติเดิม แยกระบบพื้นฐานที่มีจริง ข้อมูล DEMO ผลทดสอบก่อนหน้า และงานค้างออกจากข้อเสนอเริ่มต่อ
+- สรุปงานก่อนหน้า: UI ภาษาไทยขาวฟ้า/TypeScript, Express JavaScript + MySQL Docker/Prisma, ADMIN/USER, ห้อง ผู้เช่า คำขอ/กันห้อง สัญญา มิเตอร์ บิล ชำระเงิน/สลิป ประกัน แจ้งซ่อม ข่าวสาร การแจ้งเตือน รายจ่าย/รายงาน และ Audit; ค่าเริ่มต้น 72 ชั่วโมง/1 เดือน/5 วัน Admin ปรับได้ ค่าเช่าล่วงหน้า น้ำไฟย้อนหลัง ต้องมีบัญชี USER ก่อนสัญญา
+- ข้อมูลทดสอบก่อนหน้า: เพิ่มห้อง DEMO 8 ห้องในหอเดิม ราคา 2,500–4,500 บาท 7 ห้องเปิดและว่าง DEMO-204 ปิดหนึ่งห้อง ไม่ทับข้อมูลหอ/ห้องเดิม มีสคริปต์เพิ่มอย่างเดียวที่รันซ้ำได้ ไม่สร้างสัญญาหรือเงินจำลอง
+- ไฟล์รอบนี้: docs/PROJECT_STATUS.md และ docs/WORK_LOG.md; รายการไฟล์งานระบบเดิมและรายละเอียดผลตรวจอยู่ docs/DORM_OPERATIONS.md และรายการก่อนหน้า
+- ตรวจสอบรอบนี้: ตรวจความสอดคล้องเอกสาร ลิงก์ Local และ git diff --check ไม่รัน API/UI/Build/ฐานข้อมูลใหม่เพราะแก้เฉพาะเอกสาร ผล API 40/40, Chrome 33 กลุ่ม, Unit 3/3 และ Build ผ่านเป็นผลจากรอบพัฒนาที่บันทึกไว้ก่อนหน้า ไม่ใช่ผลรันใหม่
+- ผลต่อข้อมูล/Environment: ไม่แก้โค้ด Schema แพ็กเกจ .env หรือฐานข้อมูล ไม่มี Reset/Seed/ลบข้อมูล ไม่บันทึก Secret หรือข้อมูลส่วนตัว และไม่ Commit/Push
+- งานค้าง: รูป/สิ่งอำนวยความสะดวก มิเตอร์ย้อนหลัง/เปลี่ยนมิเตอร์ อัตรากลางรอบ บิลปิดสัญญา/แก้บิล ต่ออายุ/ย้ายห้อง/แก้สัญญาที่เริ่มใช้ แบ่งหน้า/ส่งออก และตรวจขอบเขต PDF/ความปลอดภัยรอบสุดท้าย บางอย่างเป็นส่วนต่อยอด ไม่ถือว่าทุกข้ออนุมัติให้ทำ
+- จุดเริ่มต่อ: อ่านบันทึกและตรวจ Working Tree/ข้อมูลจริงก่อน ข้อเสนอคือทำรูปห้อง/สิ่งอำนวยความสะดวกแล้วทดลองวงจรเช่าครบกระบวนการ รอผู้ใช้เลือกงานถัดไป; งานที่ยังไม่ Commit/Push และ MySQL volume/.env ไม่ได้ย้ายเครื่องผ่านการบันทึกเอกสาร
+
+### 2026-11-14 — เพิ่มห้องทดสอบในหอเดิม (Asia/Bangkok)
+
+- คำขอ: สร้างข้อมูลหอพักเพื่อให้ผู้ใช้ทดสอบ ตรวจฐานจริงพบมีหอเดิมหนึ่งแห่งแต่ไม่มีห้อง จึงรักษาข้อมูลเดิมและเพิ่มห้องในหอนั้น
+- ทำแล้ว: เพิ่ม DEMO-101/102/103/104/201/202/203/204 รวม 8 ห้อง ราคา 2,500–4,500 บาท ความจุ 1–2 คน พัดลม 2/แอร์ 6 เปิดรับเช่า 7 และปิด DEMO-204 หนึ่งห้อง พร้อม Audit กิจกรรมเพิ่มข้อมูลทดสอบ
+- ไฟล์: server/scripts/add-demo-rooms.js, docs/PROJECT_STATUS.md, docs/WORK_LOG.md สคริปต์ใช้ Transaction เพิ่มอย่างเดียว ไม่ Reset/Seed/ลบ/แก้รายการเดิม และไม่สร้างหอแห่งที่สอง
+- ตรวจจริง: node --check ผ่าน; รันสคริปต์ครั้งแรกเพิ่ม 8 ครั้งที่สองเพิ่ม 0 และตรวจ Hash หอ/ห้องเดิมตรงกัน; GET /api/properties HTTP 200 หอเดียว/ห้อง DEMO 8; GET /api/properties/available-rooms HTTP 200 พบ 7 ห้อง ไม่แสดง DEMO-204; เว็บ 5173 HTTP 200
+- ข้อมูล/Environment: เก็บข้อมูลทดสอบนี้ไว้ตามคำขอ ไม่ล้างเมื่อจบ ไม่เปลี่ยนบัญชี/Session/สัญญา/บิล/อัตราน้ำไฟ/Schema/.env และไม่เพิ่ม Dependency; ไม่รันชุดทดสอบเต็มหรือ Build เพราะเป็นการเพิ่มข้อมูลและสคริปต์เฉพาะ ไม่เปลี่ยนแอป
+- เริ่มต่อ: รีเฟรชเว็บ เลือกห้อง DEMO เพื่อส่งคำขอ จากนั้นใช้ Admin อนุมัติและทดลองทำสัญญาตาม DORM_OPERATIONS.md อัตราน้ำไฟยังต้องตั้งก่อนทดสอบบิลน้ำไฟ งานยังไม่ Commit/Push
+
+### 2026-11-14 — ระบบบริหารหอพัก สัญญา บิล การเงินและระบบประกอบ (Asia/Bangkok)
+
+- คำขอ/ขอบเขต: ทำส่วนที่เหลือตามคำสั่งทำมาทีเดียว ผู้ใช้ยืนยันค่าเริ่มต้นกันห้อง 72 ชั่วโมง/ประกัน 1 เดือน/ครบกำหนด 5 วัน ให้ Admin ปรับได้ ค่าเช่าล่วงหน้า น้ำไฟย้อนหลัง และต้องมีบัญชี USER ก่อนทำสัญญา
+- ทำแล้ว: เพิ่มทะเบียนผู้เช่า/ผู้พักร่วม สัญญาร่าง/แก้ร่าง/เริ่มใช้/จบ กันห้องหมดอายุ อัตรา/มิเตอร์ บิล Snapshot กันซ้ำ เงินสด/โอนพร้อมภาพหลักฐานส่วนตัว การตรวจรับเงิน ประกันแยกรับคืน แจ้งซ่อม รายจ่าย/รายงาน ข่าวสาร/การแจ้งเตือน และ Audit สำคัญ ใช้ข้อมูล Backend จริงและสอง Role เดิม
+- ความถูกต้อง: Room/Lease/Invoice row lock และ Unique constraints กันห้องซ้อน บิลซ้ำและรับชำระซ้ำ; Decimal คำนวณเงิน ปัดครึ่งขึ้นสองตำแหน่ง; วันสิ้นเดือนอิงวันหลักเดิม; User อ่านข้อมูล/หลักฐานได้เฉพาะของตน; ต้องมี USER ทั้งตอนสร้างและเริ่มใช้สัญญา ล็อกทะเบียนระหว่างเปลี่ยนบัญชีและสร้างสัญญา
+- ไฟล์สำคัญและรายการเต็ม: docs/DORM_OPERATIONS.md; Schema/Migrations สองชุด, routes operations/billing/community, lib domain/reservations, Controllers auth/booking/property, scripts create-admin/verify-db/run-db-tests, Fixture helper/operations.test.js; หน้าจอและ Shared components/types/navigation ใน Client พร้อม ui-smoke.mjs
+- ฐานข้อมูล: migrate deploy เพิ่ม 17 Models และสองคอลัมน์ Booking จากนั้นขยาย InvoiceItem.unitPrice ให้รองรับช่วงค่าเช่าเดิม รวม 24 Models; เพิ่มนโยบายเริ่มต้นหนึ่งรุ่นเท่านั้น ตรวจ Hash ของข้อมูลเดิมเจ็ด Models ตรงกัน ไม่มี Reset/Seed/ลบ Volume/ฐาน Test หรือ Shadow และไม่เปลี่ยน .env/Secret
+- ตรวจจริงล่าสุด: npm --prefix server test ผ่าน 40/40; npm --prefix client run test:ui Chrome ผ่าน 33 กลุ่ม รวมฟอร์มมิเตอร์/อัตรา บิล สัญญา สลิป รับเงิน ซ่อม ข่าว รายจ่าย นโยบายและรับ–คืนประกัน API/UI รันตามลำดับและหยุดเว็บใช้งานระหว่างทดสอบ Fixture cleanup ตรวจ Hash ข้อมูลเดิมทุก Model ผ่าน
+- Frontend: npm --prefix client test ผ่าน 3/3; lint, format:check และ build รวม TypeScript strict ผ่าน Entry JS 303.28 KB/gzip 100.42 KB; node --check ของไฟล์ Backend ที่เปลี่ยน 17 ไฟล์ผ่าน; ตรวจลิงก์ Local ในเอกสารหลักแปดไฟล์ไม่พบลิงก์เสีย
+- ปัญหาที่พบและแก้: Fixture checker ต้องใช้ invoiceId เป็น PK ของ InvoiceSettlement; Chrome ใน Sandbox คุย DevTools ไม่ได้จึงรันด้วยสิทธิ์เหมาะสม; ตรวจ Focus ใช้ Tab จริง; ตรวจภาพพบข้อความไทยเสียสามจุดจากการเขียนผ่าน Shell แก้ UTF-8 แล้ว เพิ่ม Browser assertions ของเมนู/สถานะและตรวจ Source ไม่พบข้อความเสีย; ทดสอบแจ้งเตือนเมื่อเครือข่ายล้มเหลวและลองใหม่ผ่าน
+- ผลต่อข้อมูลหลัง cleanup: User 1/AuthSession 2/RentalPolicy 1 อีก 21 Models เป็น 0 คงบัญชี/Session เดิม ไม่มีห้องหรือรายการเงินทดสอบค้าง; Prisma migrate diff กับฐานจริงไม่พบความต่าง
+- Environment/แพ็กเกจ: ไม่เพิ่ม Dependency หรือเปลี่ยน Stack เปิด npm start กลับบน 127.0.0.1 เท่านั้น ตรวจเว็บ 5173/API 5000/Properties API/phpMyAdmin 8080 HTTP 200 มี DeprecationWarning util._extend จากเครื่องมือรันเดิม ไม่ขัดการเริ่มเว็บ ไม่ได้ตรวจช่องโหว่ Dependency ใหม่ทั้ง Stack
+- เอกสาร: อัปเดต BUSINESS_RULES, AGENTS, PROJECT_STATUS, README, SETUP_NEW_MACHINE, RTM และ DORM_OPERATIONS ให้แยกผลล่าสุดจาก Snapshot เก่าอย่างชัดเจน ไม่อ้างว่าครบทุกข้อ PDF เพียงเพราะมีเมนู
+- งานค้าง/เริ่มต่อ: รูปและสิ่งอำนวยความสะดวกเต็มรูปแบบ การแก้มิเตอร์/เปลี่ยนมิเตอร์ย้อนหลัง วิธีคิดเมื่ออัตราเปลี่ยนกลางรอบ บิลปิดสัญญากลางเดือน/ใบลดหนี้ และออกบิลอัตโนมัติยังไม่พัฒนา ดูข้อจำกัดใน DORM_OPERATIONS.md ก่อนต่อยอด ต้องกรอกข้อมูลหอและอัตราจริงเอง ไม่สร้าง Admin/Mock ให้ใช้งานจริง งานทั้งหมดพร้อมงานค้างก่อนหน้ายังไม่ Commit/Push
+
+### 2026-11-14 — จุดพักระหว่างพัฒนางานบริหารหอพัก (Asia/Bangkok)
+
+- ขอบเขต: ทำงานที่เหลือตามคำสั่งทำมาทีเดียว ผู้ใช้ยืนยัน 72 ชั่วโมง/ประกัน 1 เดือน/ครบกำหนด 5 วัน Admin ปรับได้ ค่าเช่าล่วงหน้า น้ำไฟย้อนหลัง และต้องมีบัญชี USER ก่อนทำสัญญา
+- ทำแล้ว: ร่าง Schema และ API operations/billing/community พร้อมหน้าเว็บที่ใช้ Backend จริง เพิ่มกติกาใน BUSINESS_RULES.md และ AGENTS.md
+- ไฟล์หลัก: server/prisma/schema.prisma, server/src/routes/*Routes.js, server/src/lib/domain.js/reservations.js, client/src/pages/{Tenants,Leases,Meters,Invoices,Payments,Maintenance,Reports,News,Audit}.tsx และ OperationUI/PolicyPanel
+- ตรวจจริง: npm --prefix client run typecheck, format, lint ผ่าน ยังไม่ทดสอบ API/UI ชุดใหม่หรือใช้ Migration ชุดนี้
+- ข้อมูล/Environment: ยังไม่ Reset/Seed ไม่สร้างฐานเพิ่ม ไม่เปลี่ยน Secret; ยังไม่ Commit/Push
+- ทำต่อ: ตรวจ SQL Migration แบบเพิ่มโครงสร้าง รักษาข้อมูลเดิม ติดตั้งแล้วตรวจสิทธิ์/ยอดเงิน/บิลซ้ำ/ข้อมูลส่วนตัวและ Fixture cleanup ก่อนถือว่าพร้อมใช้
+
+### 2026-11-14 — พัฒนาจัดการหอและห้องพื้นฐานพร้อมปิด–เปิดใช้งาน (Asia/Bangkok)
+
+- คำขอ/ขอบเขต: ผู้ใช้อนุมัติเริ่มแก้หอ แก้ห้อง ปิดใช้งานแบบเก็บประวัติ ตรวจคำขอ/สิทธิ์/เลขซ้ำและทดสอบจริง ไม่เพิ่มวงจรสัญญาหรือการเงิน
+- Backend: เพิ่ม PUT /api/properties/:propertyId, PUT /api/properties/rooms/:roomId, PATCH /api/properties/rooms/:roomId/status ตรวจ ADMIN/Validation/Allowlist Fields; ป้องกันเลขซ้ำ แก้เจ้าของ/หอ/สถานะว่างข้าม Endpoint ไม่ได้
+- กติกา: isActive แยกจาก isAvailable; ปิดไม่ได้เมื่อมี PENDING/CONFIRMED; เปลี่ยนเลข/ประเภท/ความจุไม่ได้เมื่อมี CONFIRMED ส่วน Base rent มีผลต่อคำขอใหม่ ไม่แก้ยอดเก่า เปิดกลับไม่ทำห้องที่ถูกจองให้ว่าง
+- ความถูกต้องพร้อมกัน: เพิ่ม lib/room-lock.js ใช้ Parameterized FOR UPDATE ในการส่งคำขอ/อนุมัติ/แก้/ปิดห้อง ล็อก Room ก่อนอ่าน State เพื่อไม่ให้มีคำขอเกิดหลังปิดหรืออนุมัติทับสถานะปิด
+- Frontend: ฟอร์มหอใช้ร่วมกันเพิ่ม/แก้, RoomForm เพิ่ม/แก้, ตารางแยกสถานะใช้งานกับการถูกจอง มี Dialog ปิดเปิดและ Error ไทย หน้า Public/ลิงก์ตรงไม่เปิดให้เช่าห้องปิด User ยังดูประวัติคำขอตนได้
+- Migration: หยุด npm start ก่อน Generate เพิ่ม Room.isActive DEFAULT true ผ่าน 20261114000000_room_active ด้วย migrate deploy เก็บ Column/Row เดิมเจ็ดตารางเทียบ SHA-256 ก่อน–หลังตรงกัน ไม่มี Reset/Seed/ฐาน Test/Shadow/Volume ถูกลบ
+- ผลตรวจจริง: Backend API 28/28 ผ่าน รวม concurrent request/deactivation และ approval guard; Chrome UI 22 กลุ่มผ่าน; Frontend unit 3/3; TypeScript strict/Build, Lint ไม่มี Warning และ Format check ผ่าน
+- Error ที่แก้ในชุดทดสอบ: UI รอบแรก Timeout ที่หน้าห้องปิดเพราะ helper รอ h1 แต่ Empty State ใช้ h3 แก้ตัวรอให้รองรับ .empty-state h3 แล้ว UI ทั้งชุดผ่าน ไม่เปลี่ยน Business logic เพื่อข้าม Test
+- ข้อมูลหลังทดสอบ: Fixture cleanup ตรวจแฮชข้อมูลเดิมตรงกัน ทุกครั้งลบเฉพาะ Namespace ของชุดทดสอบ API/UI รันตามลำดับ User 1/AuthSession 2/อีกห้า Models 0; Schema diff No difference detected
+- เปิดระบบกลับ: npm start เปิดเว็บ 5173/API 5000; HTTP เว็บ/API/Properties/phpMyAdmin 8080 เป็น 200 Process ที่ค้างไว้ต้องตรวจใหม่เมื่อกลับมา
+- ไฟล์สำคัญ: server/prisma/schema.prisma + Migration ใหม่, lib/room-lock.js, propertyController.js/bookingController.js/propertyRoutes.js, server/test/phase0.test.js; Client DormitoryForm.tsx/RoomForm.tsx/RoomTable.tsx/AddProperty.tsx/AdminRooms.tsx/Home.tsx/PropertyDetails.tsx/types/api.ts/utils/errors.ts/ui-smoke.mjs; README/SETUP_NEW_MACHINE/RTM/PROJECT_STATUS/รายงาน ROOM_MANAGEMENT.md
+- ข้อมูล/Environment: ไม่เปลี่ยน Credentials/JWT/Dependencies/Role ไม่สร้างข้อมูลหอ/ห้องจริงให้เอง ไม่ Commit/Push รักษางานค้างจากรอบก่อน
+- งานค้าง/เริ่มต่อ: รูป/สิ่งอำนวยความสะดวก/Audit ยังไม่ครบ ต่อไปทะเบียนผู้เช่าและสัญญาตามขอบเขต และวงจรยกเลิก/จบสัญญาก่อนปิดห้องที่มีผู้ถือสิทธิ์ ข้อ 3/6/9 ยังรอยืนยัน ไม่เปิดค่าที่เสนอ
+
+### 2026-11-14 — แก้การเชื่อมต่อ MySQL ตาม .env ล่าสุดและยืนยัน Browser จริง (Asia/Bangkok)
+
+- คำขอ/ขอบเขต: ผู้ใช้เลือกแก้การเชื่อมต่อ MySQL ตาม .env ล่าสุด ไม่พัฒนาฟีเจอร์อื่น
+- ตรวจเริ่มต้น: Container/Backend ยังใช้รหัสชุดก่อนและ Root .env มีค่าต่างกันจริง เก็บไฟล์งานอื่นไว้ ไม่มีการขอให้ส่งรหัสผ่านในแชต
+- ทำแล้ว: หยุด npm start ที่เปิดเอง ซิงก์ ALTER USER เฉพาะ dormify_app@%/root@%/root@localhost ตามค่าปัจจุบัน อัปเดต Server DATABASE_URL แบบ Encode รหัสและคง JWT Secret ไม่แก้ Root .env ที่ผู้ใช้กำหนด
+- ข้อมูล: อ่านและ Hash แถวเรียง id ทั้งเจ็ดตารางก่อน–หลังตรงกัน ไม่ Reset/Seed/ลบ Volume/แก้ Schema หรือ Grants; Root .env คงที่ระหว่างคำสั่งซิงก์
+- Docker: Compose up --wait mysql phpmyadmin โหลด Environment ใหม่โดยใช้ dormify_mysql_data เดิม ทั้งสอง Healthy
+- Browser จริง: เปิด Chrome Headless Profile ใหม่ กรอกชื่อผู้ใช้และรหัสในฟอร์มแล้วคลิกปุ่ม Submit ผ่าน เข้าโครงสร้าง dormify และเห็น AuthSession/Booking/Complaint/Payment/Property/Room/User ครบ; Root .env Hash ไม่เปลี่ยนตลอดการตรวจ ไม่แสดงค่ารหัสหรือ Cookie
+- ตรวจปิดงาน: Root .env และ Backend password ตรงกัน; db:check MySQL 8.4.13 ผ่าน User 1/AuthSession 2/อีกห้า Models 0; HTTP เว็บ 5173/API 5000/Properties API/phpMyAdmin 8080 เป็น 200
+- เปิด npm start กลับและค้างไว้ ไม่รัน App API/UI suites ที่สร้าง Fixture เพิ่มเพราะเป็นงานแก้ Local Credentials ไม่ใช่ Runtime change
+- ไฟล์: server/.env (Ignore), docs/PROJECT_STATUS.md/WORK_LOG.md; ไม่ Commit/Push รักษางานค้างเดิม
+- เริ่มต่อ: ใช้ dormify_app และ MYSQL_PASSWORD ใน Root .env ปัจจุบัน เมื่อต้องเปลี่ยนรหัสอีกต้องเปลี่ยน MySQL จริง/Server URL/Container Environment ให้ตรงกัน
+
+### 2026-11-14 — พบ .env เปลี่ยนหลังซิงก์ระหว่างตรวจ Chrome (Asia/Bangkok)
+
+- คำขอ: ผู้ใช้แจ้งยังเข้าไม่ได้ ถามอาการล่าสุดแบบ Async และตรวจระบบต่อโดยไม่ขอรับรหัสผ่านผ่านแชต
+- ตรวจต้นรอบ: db:check ผ่าน แต่ Root .env ต่างจาก Server URL อีกและ HTTP Login ด้วย Root .env ไม่ผ่าน
+- ทำแล้วภายใต้คำอนุญาตเปลี่ยน app/root เดิม: หยุด npm start ที่เปิดเอง ซิงก์ค่าล่าสุดเข้าบัญชีเดิมและ Server URL ตรวจ Hash เจ็ดตารางตรงเดิมและ JWT ไม่เปลี่ยน Root .env คงที่ระหว่างคำสั่งซิงก์ จากนั้น Compose โหลด Environment ใหม่ทั้งสอง Service Healthy
+- ทดสอบเพิ่ม: เปิด Chrome Headless Profile ชั่วคราวและกรอก Login จริงด้วยค่า .env ภายใน Process ไม่แสดงรหัสหรือถ่ายภาพช่องรหัส ผลไม่ผ่านที่ขั้น Browser login ไม่อ้างว่าแก้สำเร็จจาก db:check อย่างเดียว
+- หลักฐานการเปลี่ยนระหว่างรอบ: ตรวจ Container app/root เทียบ Root .env ไม่ตรงทั้งคู่ แต่ Container กับ Server ตรงกัน; mtime Server 12:26:33.631 UTC และ Root .env 12:26:51.817 UTC ห่างประมาณ 18 วินาที ไม่บันทึกค่ารหัส
+- งานต่อที่ต้องรอ: ขอให้ผู้ใช้หยุดแก้ .env และยืนยันใช้ค่าล่าสุดก่อนซิงก์และทดสอบใหม่ ไม่หมุนรหัสซ้ำหรือทับค่าผู้ใช้ระหว่างไฟล์ยังเปลี่ยน
+- ข้อมูล/Environment: เจ็ดตารางคงเดิมหลังซิงก์ db:check ล่าสุด User 1/AuthSession 2/อีกห้า Models 0 เปิด npm start กลับแล้ว ไม่มี Reset/Seed/ลบ Volume หรือ Schema change
+- ไฟล์: server/.env (Ignore) ซิงก์รอบนี้, docs/PROJECT_STATUS.md/WORK_LOG.md บันทึกข้อจำกัดและผลจริง; ไม่ Commit/Push
+
+### 2026-11-14 — ซิงก์รหัส app/root ตามคำยืนยันและซ่อม DATABASE_URL (Asia/Bangkok)
+
+- คำขอ/ขอบเขต: หลังถามวิธีปรับเองและได้รับคำอธิบายการเปลี่ยน app/root, Environment และ Restart ผู้ใช้สั่งทำให้ จึงอนุมัติการเปลี่ยน Credentials จริงชัดเจนแล้ว
+- ตรวจเริ่มต้น: db:check ไม่ผ่าน ต่างจากรอบก่อน; ตรวจโครงสร้างพบ Server DATABASE_URL ขาด Host/Port ขณะที่ Root .env รหัส app/root ต่างจาก Container เดิม ทั้งสามบัญชีเดิมคือ dormify_app@%, root@%, root@localhost
+- ความปลอดภัย: ไม่แสดงค่ารหัส/Hash รหัส/Token ในบันทึก การตรวจ URL ครั้งแรกเกิด Node Invalid URL ที่แสดง input ผ่านเครื่องมือ จึงปรับการตรวจต่อมาเป็น try/catch และไม่แสดง input หรือข้อความผิดพลาดที่อาจมี Credentials อีก ไม่คัดลอกค่าดังกล่าวลงเอกสารหรือคำตอบ
+- ทำแล้ว: หยุด npm start ที่เปิดเอง ตรวจ Root เดิมเชื่อมได้ อ่าน Snapshot ตารางธุรกิจภายใน Process แล้วใช้ ALTER USER กับบัญชีเดิมทั้งสาม Record ตามรหัสใน Root .env ผ่าน stdin แบบไม่ส่งค่ารหัสใน Command arguments ไม่เปลี่ยน Grants หรือ Authentication plugin
+- Environment: ซ่อมเฉพาะ DATABASE_URL ใน server/.env เป็น MySQL dormify_app/127.0.0.1/MYSQL_PORT/dormify โดย Encode รหัส ไม่แก้ JWT Secret หรือ Root .env ที่ผู้ใช้กำหนดไว้
+- ผลข้อมูล: ใช้ Root อ่านและเทียบ SHA-256 ของแถวเรียง id ทั้ง User/AuthSession/Property/Room/Booking/Payment/Complaint ก่อน–หลังตรงกันทั้งหมด ไม่ Reset/Seed/ลบข้อมูลหรือฐาน
+- Docker: Compose up --wait mysql phpmyadmin สร้างเฉพาะ MySQL Container ซ้ำโดยใช้ dormify_mysql_data เดิม ทั้งสอง Container Healthy พอร์ต loopback 3306/8080
+- ผลทดสอบจริง: Root เชื่อมด้วยรหัสใหม่ผ่าน; db:check MySQL 8.4.13 ผ่าน User 1/AuthSession 2/อีกห้า Models 0; HTTP Login ด้วย dormify_app/รหัส .env ปัจจุบันผ่านใน Session/Cookie/CSRF ใหม่ และเห็นครบเจ็ดตาราง
+- เปิด npm start กลับ เว็บ/API พร้อม ไม่รันชุด API/UI ที่สร้าง Fixture หรือ Build ซ้ำเพราะแก้ Local Credentials เท่านั้น
+- ไฟล์: server/.env (Ignore), docs/PROJECT_STATUS.md, WORK_LOG.md, PHPMYADMIN.md; ไม่เปลี่ยน Runtime/Schema/Package ไม่มี Commit/Push
+- งานต่อ: ผู้ใช้เข้าสู่ phpMyAdmin ใหม่ด้วย dormify_app และ MYSQL_PASSWORD ใน Root .env; Client อื่นที่จำรหัสเก่าต้องเปลี่ยนตาม ห้ามเปลี่ยนแค่ .env แล้วคาดว่ารหัสใน MySQL จะเปลี่ยนอัตโนมัติ
+
+### 2026-11-14 — ตรวจ 1045 ซ้ำและรอยืนยันซิงก์รหัสจริง (Asia/Bangkok)
+
+- คำขอ: ผู้ใช้ส่ง Access denied ของ dormify_app ซ้ำหลังนำ Root .env.example ออก
+- ตรวจจริง: Root .env MYSQL_PASSWORD ไม่ตรง Server DATABASE_URL แล้ว ทั้ง app/root ใน Root .env ต่างจาก Container config เดิม; ไม่มีการแสดงค่าจริง db:check ฝั่ง Server ยังผ่าน User 1/AuthSession 2/อีกห้า Models 0
+- HTTP Session ใหม่: Login ด้วย Root .env ปัจจุบันไม่ผ่าน ต่างจากการตรวจครั้งก่อน จึงระบุว่า Credentials ไม่ตรงกันจริง ไม่กล่าวโทษ Browser Cache
+- ตรวจการกู้การเชื่อมต่อ: Root ใน Container ยัง Login ได้ด้วยค่า Environment เดิม ไม่ได้เปลี่ยนสิทธิ์หรือ Password ตอนตรวจ
+- การดำเนินการ: หยุด npm start ที่เปิดเองชั่วคราวเพื่อเตรียมซิงก์ เตรียมคำสั่ง ALTER USER app/root และอัปเดต Server URL พร้อมตรวจ Hash ข้อมูล แต่ exec_command ถูก Auto-review ปฏิเสธก่อนสร้าง Process เพราะผู้ใช้ยังไม่ยืนยันการเปลี่ยนรหัสจริงอย่างชัดเจน จึงไม่มี SQL/ไฟล์จากคำสั่งนั้นถูกเปลี่ยน และไม่พยายามอ้อมการปฏิเสธ
+- การสื่อสาร: อธิบายเหตุผลของ Auto-review และถามยืนยันให้ใช้รหัสใน .env ปัจจุบันสำหรับทั้งสองบัญชี พร้อมแจ้งผลกระทบต่อ Client ที่ใช้รหัสเก่า รอคำตอบก่อนทำต่อ
+- งานที่ทำได้: เปิด npm start กลับด้วย Backend config เดิมที่เชื่อมได้; ไม่ Reset/Seed/ลบ Volume ไม่ Commit/Push
+- ไฟล์: PROJECT_STATUS.md/WORK_LOG.md เพิ่มบันทึก ไม่มีการเปลี่ยน Runtime/Schema/รหัสผ่านในรอบที่ถูกปฏิเสธ
+
+### 2026-11-14 — ลบ Root .env.example ตามคำขอ (Asia/Bangkok)
+
+- คำขอ: ผู้ใช้สั่งลบไฟล์ตัวอย่างที่ทำให้สับสนกับ .env ตัวจริงในบริบทการดูรหัส MySQL
+- ทำแล้ว: ลบเฉพาะ D:\Code\dormify\.env.example ไม่สร้างสำเนาเพิ่ม; เก็บ client/server .env.example ที่ใช้แยกส่วนไว้
+- ตรวจสอบ: ตรวจพาธเป้าหมายตรงไฟล์ Root, Test-Path หลังลบเป็น False และ Hash .env ตัวจริงก่อน–หลังตรงกัน; setup-local.js สร้าง Root .env จากค่าภายในโค้ด ไม่อ่านไฟล์ตัวอย่างนี้
+- ไฟล์: .env.example (ลบ), docs/SETUP_NEW_MACHINE.md, PHPMYADMIN.md, PROJECT_STATUS.md, WORK_LOG.md; ไม่แก้ Secrets/รหัสผ่าน/Schema/ข้อมูล ไม่รัน App tests เพราะไม่มีโค้ดเปลี่ยน ไม่ Commit/Push
+- งานต่อ: ใช้ MYSQL_PASSWORD จาก Root .env เมื่อล็อกอิน phpMyAdmin เครื่องใหม่รัน npm run setup ตามเดิม
+
+### 2026-11-14 — ตรวจ phpMyAdmin Access denied for dormify_app (Asia/Bangkok)
+
+- คำขอ/ขอบเขต: ผู้ใช้ส่ง HY000/1045 จาก phpMyAdmin เมื่อ MySQL ปฏิเสธบัญชี dormify_app จากเครือข่าย Docker
+- ตรวจจริง: npm --prefix server run db:check ผ่าน MySQL 8.4.13; เปรียบเทียบค่าภายใน Process พบ Root .env กับ Server DATABASE_URL ใช้รหัสเดียวกัน ไม่แสดงรหัส/Token/Cookie
+- ผล HTTP: Login phpMyAdmin ด้วย dormify_app/รหัส MYSQL_PASSWORD ตัวจริงผ่าน พร้อม Cookie/CSRF และเปิดโครงสร้าง dormify พบเจ็ดตาราง จึงไม่แก้ MySQL Host grants หรือ Reset รหัสจากข้อผิดพลาดนี้
+- ข้อค้นพบ: .env.example มีรหัสไม่ว่างและไม่ตรงกับค่าที่ใช้งานจริง เป็นงานแก้ไฟล์ของผู้ใช้ที่พบระหว่างตรวจ ไม่เปลี่ยนทับและไม่บันทึกค่า หากนำค่าจากไฟล์ตัวอย่างมาใช้ย่อมไม่ตรงกับบัญชีจริง
+- แนวทางผู้ใช้: เปิด .env ที่ Root คัดลอกเฉพาะค่า MYSQL_PASSWORD ไม่รวม Quotes/ช่องว่าง และใช้ชื่อ dormify_app รหัสนี้แยกจาก Admin ของเว็บ; ไม่อ้างว่าหน้า Browser ผู้ใช้แก้แล้วจนลองใหม่
+- ข้อมูล/Environment: ไม่เปลี่ยน Secrets/บัญชี/สิทธิ์/Schema/Volume ไม่มี Reset/Seed และไม่รัน App API/UI suites ซ้ำเพราะตรวจเฉพาะการเชื่อมต่อและอ่านข้อมูล
+- ไฟล์เอกสาร: PROJECT_STATUS.md, WORK_LOG.md, PHPMYADMIN.md; ไม่มี Commit/Push รักษางานค้างเดิม
+
+### 2026-11-14 — ลบไฟล์ Generated และโฟลเดอร์ว่างที่ไม่จำเป็น (Asia/Bangkok)
+
+- คำขอ/ขอบเขต: ผู้ใช้สั่งลบไฟล์ไม่เกี่ยวข้องและไม่จำเป็นทั้งหมด ตรวจการใช้งานก่อนลบ รักษา Source และข้อมูลใช้งาน
+- ตรวจจริง: ตรวจรายการไฟล์ทั้งโปรเจกต์โดยข้าม Dependencies/Git, Import graph ผ่าน TypeScript resolver จาก main.tsx และ Browser resource test พบไฟล์แอปที่ไม่อ้างถึง 0 ไฟล์; Components เก่าอย่าง Review/Mess/Gallery ยังถูก Import จึงไม่ลบฟังก์ชันเดิม
+- ลบแล้ว: client/dist (Build 20 ไฟล์), client/.ui-artifacts (ภาพ/JSON ทดสอบ 12 ไฟล์ รวม Snapshot ตรวจ phpMyAdmin), .local และ client/src/data ที่ว่าง รวม 32 ไฟล์ 3,736,596 Bytes
+- ความปลอดภัยของพาธ: Resolve Absolute path ให้อยู่ใน D:\Code\dormify ตรวจ ReparsePoint/ลิงก์และโฟลเดอร์ว่างก่อน Remove-Item -LiteralPath ไม่สร้าง ZIP/Backup ใหม่ตามความชอบผู้ใช้
+- คงไว้: .env และสำเนาเดิม, SQLite archive/Backups, MySQL Volume, node_modules และ Cache Vite ที่ Server กำลังใช้, PDF/เอกสารย้อนหลัง/แผนงาน, Tests และโค้ดที่ถูกอ้างถึง
+- ตรวจสอบ: npm --prefix client run typecheck ผ่าน; ตรวจเป้าหมายลบไม่มีแล้ว ไม่ Build ซ้ำเพื่อสร้าง Generated files คืน ไม่รัน API/UI suites ระหว่างมีข้อมูลใช้งานจริง
+- ไฟล์เอกสาร: PROJECT_STATUS.md/WORK_LOG.md บันทึกการลบ และ UI_REDESIGN.md ปรับลิงก์ภาพเก่าเป็นชื่อไฟล์พร้อมระบุว่าไม่อยู่แล้ว; ผลทดสอบเก่าในรายงานยังเป็นประวัติ ไม่อ้างว่ารันใหม่
+- ข้อมูล/Environment: ไม่เปลี่ยน Schema/Secrets/บัญชี/ข้อมูลใน MySQL หรือ Docker; ไม่มี Source/Dependency ถูกลบ ไม่ Commit/Push
+- งานต่อ: เปิดเว็บ/ดูฐานได้ตามเดิม; เมื่อต้อง Build หรือเก็บภาพหลักฐานใหม่ใช้คำสั่งเดิมตามคู่มือ การล้างไฟล์ไม่ได้เพิ่มฟีเจอร์ที่ยังค้าง
+
+### 2026-11-14 — เพิ่ม phpMyAdmin เชื่อม MySQL เดิม (Asia/Bangkok)
+
+- คำขอ/ขอบเขต: ผู้ใช้ตกลงเพิ่ม phpMyAdmin เพื่อเปิดดู MySQL ผ่านเว็บ โดยคง Prisma ใน Backend
+- ทำแล้ว: เพิ่ม Compose Service phpmyadmin Profile tools, phpmyadmin:5.2.3-apache ตรึง digest e4b3eb5305cd42d21512bb55def2bab52625d56df927ad4ee1864a9354c84d40, PMA_HOST=mysql/PMA_PORT=3306/PMA_LANG=th พอร์ต 127.0.0.1:8080 ปรับผ่าน PHPMYADMIN_PORT ได้ ไม่ใส่ PMA_USER/PMA_PASSWORD จึงใช้ Login ปกติ
+- คำสั่ง: เพิ่ม db:admin/db:admin:stop, db:status แสดง MySQL/phpMyAdmin, db:stop หยุดทั้งคู่ ไม่ลบ Volume; db:up ยังคงเปิดเฉพาะ MySQL
+- ตรวจจริง: Compose config --quiet ผ่าน เปิดหน้า HTTP 200 มี Login ทดสอบ Session/Cookie/CSRF และ Login ด้วย dormify_app โดยอ่านรหัสใน Process ไม่แสดง Secrets เปิดโครงสร้างฐาน dormify เห็น 7 ตารางธุรกิจ
+- ปัญหาและแก้: Healthcheck ด้วย PHP file_get_contents ไม่ผ่านแม้ HTTP Login/อ่านตารางสำเร็จ เปลี่ยนเป็น curl ที่มีใน Image แล้ว db:admin ซ้ำผ่าน ทั้งสอง Service Healthy และพอร์ต loopback ตามต้องการ; Process เปิดครั้งแรกจบ unhealthy เป็นผลก่อนแก้ ไม่ใช่สถานะล่าสุด
+- ข้อมูล/Environment: เชื่อม MySQL/Volume เดิม ไม่สร้างฐาน/Schema/User ใหม่ ไม่แก้ .env หรือรหัสผ่าน ไม่ Reset/Seed; ข้อมูลที่ตรวจล่าสุด User 1/AuthSession 2 ส่วน Property/Room/Booking/Payment/Complaint เป็น 0
+- ตรวจข้อมูล: บันทึก Snapshot Hash ก่อน–หลังใน client/.ui-artifacts ที่ Ignore; User/Property/Room/Booking/Payment/Complaint (6 Models) ตรงเดิม AuthSession เปลี่ยนระหว่างเว็บเปิดใช้งาน จึงไม่ยืนยันว่า Snapshot ทั้งฐานเท่ากันและไม่ลบ/ย้อน Session เพื่อทำให้ตรวจผ่าน ไม่มีการรัน App API/UI suites เพิ่มระหว่างใช้งานจริง
+- ไฟล์: compose.yaml, package.json (เฉพาะ scripts ไม่เปลี่ยน dependencies), .env.example, README.md, docs/PHPMYADMIN.md, SETUP_NEW_MACHINE.md, PRISMA_START.md, PROJECT_STATUS.md และ WORK_LOG.md; ตรวจเอกสาร/Whitespace ก่อนส่ง
+- งานต่อ: ผู้ใช้เปิด phpMyAdmin ด้วย dormify_app/รหัส MYSQL_PASSWORD ของเครื่องตน ไม่ใช้รหัส Admin ของเว็บ; Backend/Schema ยังใช้ Prisma และฟีเจอร์ที่ค้างตามขอบเขตเดิม ไม่มี Commit/Push
+
+### 2026-11-14 — เตรียม Local Environment และทดสอบ MySQL บนเครื่องเดิม (Asia/Bangkok)
+
+- คำขอ/ขอบเขต: ผู้ใช้สั่งเริ่มตามข้อเสนอเตรียมเครื่องให้รันโค้ด GitHub ล่าสุดก่อนพัฒนาฟีเจอร์ ไม่เพิ่มฟีเจอร์ DORMIFY
+- ตรวจเริ่มต้น: Node 24.18.0/npm 11.16.0; Dependencies Frontend ขาด ESLint TypeScript/Prettier; Docker มีจริงแบบรายผู้ใช้แต่ PATH ของ Process เก่ายังไม่เห็น และ Engine ยังไม่เปิด
+- ทำแล้ว: npm ci --no-audit --no-fund ตาม Lockfile ทั้งสามส่วน เปิด Docker Desktop ที่ LOCALAPPDATA/Programs/DockerDesktop และเพิ่ม resources/bin เฉพาะ PATH ของคำสั่งที่ใช้ ไม่แก้ PATH ระบบ (User PATH มีอยู่แล้ว)
+- ตรวจข้อมูลก่อนย้าย: SQLite ทั้งเจ็ดตาราง 0 แถว Integrity ok และ FK errors 0; ย้ายไฟล์เดิมแบบไม่เขียนทับไป server/prisma/backups/before-mysql-20261114.db ตรวจพาธอยู่ใน Workspace และ SHA-256 คงเดิม 7767ceab10663a5d44b30f8fd8848565ae8ff01f919a78ad7dc7b7f85350da69 ไม่มีข้อมูลจริงให้ Import
+- Environment: เก็บ server/.env เดิมที่ server/.env.before-mysql-20261114 เปลี่ยน DATABASE_URL เป็น local MySQL รักษา JWT_SECRET; สร้าง Root .env พร้อมรหัส DB สุ่มและไม่แสดงค่า ตรวจ git check-ignore ครบ รวม Backup; npm run setup ซ้ำยืนยัน Hash .env ทั้งสามไฟล์ไม่เปลี่ยน
+- MySQL: npm run db:up เปิด Image ที่ Compose ตรึงไว้ MySQL 8.4.13, Engine 29.9.3, dormify-mysql-1 Healthy พอร์ต 127.0.0.1:3306 สร้างเฉพาะ dormify_mysql_data/dormify_default ของงานนี้ ไม่พบ Container/Volume เดิมก่อนเริ่ม
+- Migration: npm run db:setup Generate Prisma 5.22.0 และ Apply 20261113000000_init_mysql ผ่าน ไม่ Reset/Seed/db push หรือสร้างฐาน Test/Shadow
+- ผลตรวจจริง: Backend API 23/23, Chrome UI 17 กลุ่ม (สมัคร/Login/Logout/Privacy/เพิ่มห้อง/ขอเช่า/อนุมัติ/Responsive), Frontend unit 3/3, TypeScript/Build และ Lint ผ่าน รัน API/UI ตามลำดับและ Cleanup ยืนยันข้อมูลเดิมไม่เปลี่ยน
+- ปัญหาที่แก้: Format check แจ้ง 45 ไฟล์เพราะ CRLF หลัง Checkout บน Windows; รัน npm --prefix client run format แล้ว format:check ผ่าน ตรวจเทียบเนื้อหา HEAD แบบ Normalize line endings ไม่มีไฟล์เนื้อหาเปลี่ยน เพิ่ม .gitattributes กำหนด LF สำหรับไฟล์ Frontend ที่ Prettier ตรวจ เพื่อไม่ให้เกิดซ้ำเมื่อ Checkout ข้ามเครื่อง
+- คำสั่ง Environment ครั้งแรกผ่าน node -e ถูก PowerShell แปลง Quotes จึงหยุดก่อนเขียน Environment; แก้เป็น Here-string ส่ง stdin เข้า Node แล้วสำเร็จ ไม่มีค่า Secret ถูกแสดง
+- หลังทดสอบ: db:check เชื่อมได้ ทั้งเจ็ด Models 0 แถว ไม่มี Fixture/Admin Default/ห้องจำลองค้าง; SQLite archive Hash เดิม
+- เปิด npm start ค้างไว้ ตรวจเว็บ 5173/API 5000/Properties/Available rooms ได้ 200 และ /auth/me ไม่ส่ง Token ได้ 401; ยังคง loopback ไม่มี Public tunnel
+- ไฟล์สำคัญที่เปลี่ยนใน Git: .gitattributes, docs/PROJECT_STATUS.md, WORK_LOG.md, SETUP_NEW_MACHINE.md, README.md; ไม่แก้ Runtime/Schema/Package/Lockfile ไม่ Commit/Push
+- ข้อจำกัด: npm มีคำเตือน Deprecated/Install scripts และ Root start มี DEP0060; Generate/Build/Tests ผ่านจริง ไม่อ้างว่า Audit ช่องโหว่ผ่านเพราะรอบนี้ไม่ได้รัน Audit
+- งานค้าง/เริ่มต่อ: ให้ผู้ใช้สร้าง Admin ผ่าน Terminal และกรอกรหัสเอง แล้วเพิ่มหอ/ห้องจริง ระบบยังต้องพัฒนาจัดการหอ/ห้องให้ครบ → ผู้เช่า/สัญญา → มิเตอร์/บิล → การเงิน/ระบบประกอบ โดยข้อ 3/6/9 ยังรอยืนยัน
+
+### 2026-11-14 — อ่านเอกสาร docs ทั้งหมด (Asia/Bangkok)
+
+- คำขอ/ขอบเขต: อ่านเอกสารทุกไฟล์ ไม่ได้สั่งพัฒนาฟีเจอร์หรือเตรียมฐานข้อมูล
+- อ่านแล้ว: Markdown 20 ไฟล์ทั้งระดับ docs และ analysis รวมสถานะ/ประวัติ/กติกา/ติดตั้ง/GitHub/Prisma/ผลทดสอบ/UI/แผนข้อมูล/Roadmap/RTM; PDF 1 ไฟล์อ่านจากข้อความถอดห้าหน้า ตรวจ Hash ตรง 3a86bc087da45df777f57bc34bb5215cfa191f09c0d6d3f850bcbfeac066ddd5 ไม่ได้ตรวจภาพตารางเวลาหรือรับรอง glyph ที่ไม่มี Unicode
+- ข้อสรุป: Admin 13 + User 12 ข้อยังคงครบ กติกา 3/6/9 ยังรอยืนยัน รายงานรุ่นก่อนและ RTM มีสถานะเก่า ต้องเทียบโค้ดจริง; โค้ดรับจาก GitHub ใช้ MySQL แต่ Environment เครื่องนี้ยังต้องเตรียมแยก
+- ไฟล์สำคัญ: docs/PROJECT_STATUS.md และ docs/WORK_LOG.md เพิ่มบันทึกเท่านั้น ไม่แก้ผลทดสอบเก่า
+- ตรวจสอบจริง: อ่านไฟล์ UTF-8, รายการไฟล์, Git status และ SHA-256 ของ PDF; ไม่รัน API/UI/Build เพราะอ่านเอกสาร ไม่มีโค้ดเปลี่ยน
+- ผลต่อข้อมูล/Environment: ไม่แก้ Secrets, Schema, ฐานข้อมูล, Dependencies หรือ Container ไม่ Commit/Push; รักษางานเอกสารค้างเดิม
+- งานค้าง/เริ่มต่อ: ยึด BUSINESS_RULES.md และ SETUP_NEW_MACHINE.md พร้อมตรวจเครื่องจริง หากปรับ RTM ให้ใช้หลักฐานใหม่ ไม่อ้างผลจากเครื่องอื่นเป็นผลที่เพิ่งทดสอบ
+
 ### 2026-11-13 เวลา 18:37 — บันทึกงานเพื่อทำต่อ (Asia/Bangkok)
 
 - คำขอ: ผู้ใช้ให้เซฟสิ่งที่ทำไว้
@@ -270,3 +450,14 @@
 - ข้อมูล/Environment: ใช้ฐานทดสอบชั่วคราว ไม่ย้าย MySQL ไม่แก้ .env หรือฐานใช้งาน; เครื่องอื่นต้อง npm ci และ db:setup หลังรับโค้ด
 - งานค้าง: PENDING/การหมดอายุตามนโยบายใหม่, ผู้เช่า/สัญญา/เงิน/บิลและระบบอื่นตาม PROJECT_STATUS.md
 - รายละเอียด: docs/CODE_QUALITY_IMPROVEMENTS.md
+
+## 13 พฤศจิกายน 2026 — รับโค้ดล่าสุดจาก GitHub บนสำเนาเครื่องเดิม
+
+- คำขอ: ดึงโค้ดล่าสุด ไม่ได้สั่งติดตั้งหรือย้ายฐานข้อมูลในเครื่องนี้
+- ตรวจพบ Working Tree สะอาดที่ 59e5bae; Fetch พบ Remote เริ่มประวัติใหม่และ main ล่าสุดคือ 75ad050
+- git pull --ff-only ปฏิเสธเพราะประวัติแยกกัน จึงเก็บประวัติเก่าที่ archive/local-before-github-sync-20261113 และใช้ git switch -C main origin/main โดยไม่ Merge/Rebase ประวัติเก่า
+- ตรวจ git rev-parse HEAD origin/main ตรงกันที่ 75ad050ab057cabc4a98904772485d6cdd88e3bd และ Working Tree สะอาดก่อนเพิ่มบันทึกนี้
+- server/.env, client/.env และ SQLite เดิมยังอยู่ ไม่เปิดเผยค่า Secret; Environment เครื่องนี้ยังชี้ SQLite ขณะที่โค้ดล่าสุดใช้ MySQL
+- ไม่ติดตั้ง Dependencies ไม่เปิด Docker ไม่รัน Migration ไม่ทดสอบแอป และไม่ได้ Push
+- อัปเดต docs/PROJECT_STATUS.md และ docs/WORK_LOG.md; สองไฟล์นี้ยังไม่ Commit
+- งานต่อ: ตรวจคู่มือ SETUP_NEW_MACHINE.md และ Environment เดิมก่อนเตรียม MySQL ตามขอบเขตที่ผู้ใช้สั่ง ห้ามลบหรือ Reset ฐานเดิม

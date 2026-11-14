@@ -11,8 +11,10 @@
         "prisma:generate": "cd server && npx prisma generate",
         "setup": "node scripts/setup-local.js",
         "db:up": "docker compose up -d --wait mysql",
-        "db:stop": "docker compose stop mysql",
-        "db:status": "docker compose ps mysql",
+        "db:stop": "docker compose --profile tools stop phpmyadmin mysql",
+        "db:status": "docker compose --profile tools ps mysql phpmyadmin",
+        "db:admin": "docker compose --profile tools up -d --wait phpmyadmin",
+        "db:admin:stop": "docker compose --profile tools stop phpmyadmin",
         "db:setup": "npm --prefix server run db:setup",
         "db:studio": "npm --prefix server run db:studio"
     },
