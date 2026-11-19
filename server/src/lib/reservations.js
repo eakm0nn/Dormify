@@ -12,7 +12,8 @@ const expireRoom = async (tx, roomId) => {
     if (expired.length && !await tx.booking.count({ where: { roomId, status: 'CONFIRMED' } }) && !await tx.lease.count({ where: { activeRoomId: roomId } })) await tx.room.update({ where: { id: roomId }, data: { isAvailable: true } });
 };
 const expireReservations = async () => {
-    const rooms = await prisma.booking.findMany({ where: { status: 'CONFIRMED', holdExpiresAt: { lte: new Date() } }, select: { roomId: true }, distinct: ['roomId'] });
+    const scope = process.env.DORMIFY_FIXTURE_SCOPE;
+    const rooms = await prisma.booking.findMany({ where: { room: { propertyId: await require('./installation').propertyId() }, status: 'CONFIRMED', holdExpiresAt: { lte: new Date() }, ...(scope ? { user: { email: { endsWith: '@' + scope + '.example.test' } } } : {}) }, select: { roomId: true }, distinct: ['roomId'] });
     for (const { roomId } of rooms) await prisma.$transaction(async tx => { await lockRoom(tx, roomId); await expireRoom(tx, roomId); });
 };
 module.exports = { expireRoom, expireReservations };

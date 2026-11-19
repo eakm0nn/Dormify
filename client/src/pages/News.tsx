@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useApiResource } from '../hooks/useApiResource';
+import { useHistoryResource } from '../hooks/useHistoryResource';
 import api from '../services/api';
 import type { Announcement, Notification } from '../types/operations';
 import { thaiDate } from '../utils/format';
@@ -11,10 +11,12 @@ import { Heading, OperationForm, Table } from '../components/OperationUI';
 const News = () => {
   const { user } = useAuth(),
     isAdmin = user?.role === 'ADMIN';
-  const news = useApiResource<Announcement[]>('/api/operations/announcements', 'โหลดข่าวสารไม่ได้'),
-    notifications = useApiResource<Notification[]>(
-      '/api/operations/notifications',
+  const news = useHistoryResource<Announcement>('announcements', 'โหลดข่าวสารไม่ได้'),
+    notifications = useHistoryResource<Notification>(
+      'notifications',
       'โหลดการแจ้งเตือนไม่ได้',
+      '',
+      !isAdmin,
     );
   const [editing, setEditing] = useState<Announcement | null>(null);
   const [error, setError] = useState('');
@@ -48,6 +50,7 @@ const News = () => {
         loading={news.loading}
         error={news.error}
         onRetry={news.refresh}
+        remote={news.remote}
         columns={[
           {
             title: 'ข่าวสาร',
@@ -78,6 +81,7 @@ const News = () => {
             loading={notifications.loading}
             error={notifications.error}
             onRetry={notifications.refresh}
+            remote={notifications.remote}
             columns={[
               {
                 title: 'รายการ',

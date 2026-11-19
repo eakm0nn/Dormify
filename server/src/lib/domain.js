@@ -34,12 +34,12 @@ const notify = (tx, userId, title, message) => userId ? tx.notification.create({
 const leaseInclude = { tenant: true, room: true, occupants: true, deposits: true };
 const leaseAccess = async (tx, leaseId, user) => {
     const lease = await tx.lease.findUnique({ where: { id: id(leaseId) }, include: leaseInclude });
-    if (!lease || (user.role !== 'ADMIN' && lease.tenant.userId !== user.userId)) fail(404, 'ไม่พบสัญญาที่คุณมีสิทธิ์เข้าถึง');
+    if (!lease || lease.room.propertyId !== await require('./installation').propertyId(tx) || (user.role !== 'ADMIN' && lease.tenant.userId !== user.userId)) fail(404, 'ไม่พบสัญญาที่คุณมีสิทธิ์เข้าถึง');
     return lease;
 };
 const invoiceAccess = async (tx, invoiceId, user) => {
-    const invoice = await tx.invoice.findUnique({ where: { id: id(invoiceId) }, include: { lease: { include: { tenant: true } }, items: true, settlement: true } });
-    if (!invoice || (user.role !== 'ADMIN' && invoice.lease.tenant.userId !== user.userId)) fail(404, 'ไม่พบใบแจ้งหนี้ที่คุณมีสิทธิ์เข้าถึง');
+    const invoice = await tx.invoice.findUnique({ where: { id: id(invoiceId) }, include: { lease: { include: { tenant: true } }, items: true, settlement: true, adjustments: true } });
+    if (!invoice || !await require('./installation').ensureRoom(invoice.lease.roomId, tx) || (user.role !== 'ADMIN' && invoice.lease.tenant.userId !== user.userId)) fail(404, 'ไม่พบใบแจ้งหนี้ที่คุณมีสิทธิ์เข้าถึง');
     return invoice;
 };
 const route = handler => async (req, res) => {

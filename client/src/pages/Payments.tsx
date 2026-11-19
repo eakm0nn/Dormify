@@ -6,6 +6,7 @@ import type { Deposit, Invoice, InvoicePayment, Lease } from '../types/operation
 import { money, thaiDate } from '../utils/format';
 import { thaiError } from '../utils/errors';
 import Button from '../components/Button';
+import CloseoutTools from '../components/CloseoutTools';
 import { ErrorMessage } from '../components/Feedback';
 import {
   ConfirmAction,
@@ -24,9 +25,12 @@ const Payments = ({ history = false }: { history?: boolean }) => {
       '/api/operations/payments',
       'โหลดการชำระเงินไม่ได้',
     ),
-    invoices = useApiResource<Invoice[]>('/api/operations/invoices', 'โหลดบิลไม่ได้'),
-    leases = useApiResource<Lease[]>('/api/operations/leases', 'โหลดสัญญาไม่ได้'),
-    deposits = useApiResource<Deposit[]>('/api/operations/deposits', 'โหลดเงินประกันไม่ได้');
+    invoices = useApiResource<Invoice[]>(history ? null : '/api/operations/invoices', 'โหลดบิลไม่ได้'),
+    leases = useApiResource<Lease[]>(history ? null : '/api/operations/leases', 'โหลดสัญญาไม่ได้'),
+    deposits = useApiResource<Deposit[]>(
+      history ? null : '/api/operations/deposits',
+      'โหลดเงินประกันไม่ได้',
+    );
   const [error, setError] = useState(''),
     [success, setSuccess] = useState(''),
     [uploading, setUploading] = useState<number | null>(null);
@@ -104,7 +108,7 @@ const Payments = ({ history = false }: { history?: boolean }) => {
                     ' · ' +
                     invoice.tenantNameSnapshot +
                     ' · ' +
-                    money(invoice.totalAmount),
+                    money(invoice.amountDue ?? invoice.totalAmount),
                 })),
             },
             {
@@ -124,7 +128,10 @@ const Payments = ({ history = false }: { history?: boolean }) => {
           onSubmit={async (values) => {
             const invoice = invoices.data?.find((item) => String(item.id) === values.invoiceId);
             if (!invoice) throw Error('กรุณาเลือกใบแจ้งหนี้');
-            await api.post('/api/operations/payments', { ...values, amount: invoice.totalAmount });
+            await api.post('/api/operations/payments', {
+              ...values,
+              amount: invoice.amountDue ?? invoice.totalAmount,
+            });
             setSuccess('บันทึกรายการรอตรวจแล้ว หากโอนเงินให้แนบภาพหลักฐานที่รายการด้านล่าง');
             await refresh();
           }}
@@ -137,12 +144,13 @@ const Payments = ({ history = false }: { history?: boolean }) => {
       <Table
         rows={(payments.data ?? []).filter((payment) => !history || payment.status === 'CONFIRMED')}
         loading={payments.loading}
-        error={payments.error || invoices.error}
+        error={payments.error || (!history ? invoices.error : '')}
         onRetry={refresh}
         columns={[
           { title: 'ใบแจ้งหนี้', render: (row) => row.invoice.invoiceNo },
           {
             title: 'ยอด / วิธี',
+            align: 'right',
             render: (row) => (
               <>
                 {money(row.amount)}
@@ -308,13 +316,14 @@ const Payments = ({ history = false }: { history?: boolean }) => {
                   'สัญญา #' + row.leaseId,
               },
               { title: 'รายการ', render: (row) => stateLabel(row.kind) },
-              { title: 'จำนวนเงิน', render: (row) => money(row.amount) },
+              { title: 'จำนวนเงิน', align: 'right', render: (row) => money(row.amount) },
               { title: 'วิธี', render: (row) => stateLabel(row.method) },
               { title: 'วันที่', render: (row) => thaiDate(row.createdAt) },
             ]}
           />
         </section>
       )}
+      {!history && <CloseoutTools />}
     </>
   );
 };

@@ -5,7 +5,6 @@ import type { Dormitory } from '../types/api';
 import { thaiError } from '../utils/errors';
 import Button from './Button';
 import Input from './Input';
-import PropertyTypeSelect from './PropertyTypeSelect';
 import { ErrorMessage } from './Feedback';
 
 const DormitoryForm = ({
@@ -21,15 +20,13 @@ const DormitoryForm = ({
     name: dormitory?.name ?? '',
     address: dormitory?.address ?? '',
     city: dormitory?.city ?? '',
-    type: dormitory?.type ?? 'HOSTEL',
     rules: dormitory?.rules ?? '',
-    hasMess: dormitory?.hasMess ?? false,
   }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const set = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = event.target;
-    if (['name', 'address', 'city', 'type', 'rules'].includes(name))
+    if (['name', 'address', 'city', 'rules'].includes(name))
       setForm((previous) => ({ ...previous, [name]: value }));
   };
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -37,8 +34,9 @@ const DormitoryForm = ({
     setSaving(true);
     setError('');
     try {
-      if (dormitory) await api.put(`/api/properties/${dormitory.id}`, form);
-      else await api.post('/api/properties', form);
+      const payload = { ...form, type: dormitory?.type ?? 'HOSTEL' };
+      if (dormitory) await api.put(`/api/properties/${dormitory.id}`, payload);
+      else await api.post('/api/properties', payload);
       await onSaved();
     } catch (err) {
       setError(thaiError(err, 'บันทึกข้อมูลหอพักไม่สำเร็จ กรุณาลองอีกครั้ง'));
@@ -75,7 +73,6 @@ const DormitoryForm = ({
           maxLength={100}
           required
         />
-        <PropertyTypeSelect value={form.type} onChange={set} />
         <div>
           <label htmlFor="dorm-rules" className="field-label">
             ข้อกำหนดการอยู่อาศัย
@@ -89,17 +86,6 @@ const DormitoryForm = ({
             maxLength={5000}
           />
         </div>
-        <label className="flex items-center gap-3 text-sm">
-          <input
-            type="checkbox"
-            className="h-4 w-4 accent-brand"
-            checked={form.hasMess}
-            onChange={(event) =>
-              setForm((previous) => ({ ...previous, hasMess: event.target.checked }))
-            }
-          />
-          มีบริการอาหารภายในหอพัก
-        </label>
         <div className="flex flex-wrap gap-3">
           <Button type="submit" disabled={saving}>
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}

@@ -3,6 +3,7 @@
     "version": "1.0.0",
     "description": "Root package to manage server and client",
     "scripts": {
+        "check:delivery": "node scripts/check-delivery.js",
         "install-all": "npm install && cd server && npm install && cd ../client && npm install",
         "start": "concurrently \"npm run server\" \"npm run client\"",
         "dev": "npm start",

@@ -19,6 +19,7 @@ export interface LoginResponse {
   user: PublicUser;
 }
 export interface Room {
+  amenities?: string[];
   id: number;
   roomNumber: string;
   capacity: number;
@@ -30,32 +31,18 @@ export interface Room {
   images?: string[];
   property?: Dormitory;
 }
-export interface Review {
-  id: number;
-  studentName?: string;
-  name?: string;
-  rating: number;
-  date: string;
-  text: string;
-}
-export type MealMenu = Record<
-  string,
-  Partial<Record<'breakfast' | 'lunch' | 'snacks' | 'dinner', string>>
->;
 export interface Dormitory {
+  amenities?: string[];
   id: number;
   name: string;
   address: string;
   city: string;
   type: string;
   rules: string | null;
-  hasMess: boolean;
   owner?: Pick<PublicUser, 'name' | 'email'>;
   rooms: Room[];
   // Optional presentation fields retained for compatibility; no mock data.
   images?: string[];
-  messMenu?: MealMenu;
-  reviews?: Review[];
 }
 export interface Booking {
   holdExpiresAt?: string | null;

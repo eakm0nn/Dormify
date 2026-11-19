@@ -2,6 +2,7 @@ const prisma = require('../lib/prisma');
 const lockRoom = require('../lib/room-lock');
 const { audit, notify } = require('../lib/domain');
 const { expireRoom, expireReservations } = require('../lib/reservations');
+const installation = require('../lib/installation');
 
 class BookingError extends Error {
     constructor(status, message) {
@@ -23,6 +24,7 @@ const bookingFailure = (res, error, fallback) => {
 const createBooking = async (req, res) => {
     try {
         const { roomId, startDate, endDate } = req.body;
+        if (!await installation.ensureRoom(roomId)) return res.status(409).json({ error: 'Room not available' });
         const booking = await prisma.$transaction(async tx => {
             await lockRoom(tx, roomId);
             await expireRoom(tx, roomId);
@@ -49,6 +51,7 @@ const getOwnerBookings = async (req, res) => {
     try {
         await expireReservations();
         const bookings = await prisma.booking.findMany({
+            where: { room: { propertyId: await installation.propertyId() } },
             include: { user: { select: { name: true, email: true } }, room: true },
             orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         });
@@ -62,6 +65,7 @@ const getBookingSummary = async (req, res) => {
     try {
         await expireReservations();
         const propertyId = Number(req.query.propertyId);
+        if (propertyId !== await installation.propertyId()) return res.status(404).json({ error: 'Property not found' });
         const property = await prisma.property.findUnique({ where: { id: propertyId }, select: { id: true } });
         if (!property) return res.status(404).json({ error: 'Property not found' });
         const [totalRooms, availableRooms, pendingBookings] = await prisma.$transaction([
@@ -80,7 +84,7 @@ const updateBookingStatus = async (req, res) => {
         const { bookingId } = req.params;
         const { status } = req.body;
         const target = await prisma.booking.findUnique({ where: { id: bookingId }, select: { roomId: true } });
-        if (!target) return res.status(404).json({ error: 'Booking not found' });
+        if (!target || !await installation.ensureRoom(target.roomId)) return res.status(404).json({ error: 'Booking not found' });
         const result = await prisma.$transaction(async tx => {
             await lockRoom(tx, target.roomId);
             await expireRoom(tx, target.roomId);

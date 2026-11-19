@@ -2,17 +2,20 @@ const prisma = require('../lib/prisma');
 const lockRoom = require('../lib/room-lock');
 const { audit } = require('../lib/domain');
 const { expireReservations } = require('../lib/reservations');
-const propertyDetails = { rooms: true, owner: { select: { name: true, email: true } } };
+const installation = require('../lib/installation');
+const { photoSelection, presentRoom, presentProperty } = require('../lib/room-presentation');
+const propertyDetails = { rooms: { include: { photos: photoSelection } }, owner: { select: { name: true, email: true } } };
 
 // Get all properties (with optional filters)
 const getProperties = async (req, res) => {
     try {
         await expireReservations();
         const properties = await prisma.property.findMany({
+            where: { id: await installation.propertyId() },
             include: propertyDetails,
             orderBy: { id: 'asc' },
         });
-        res.json(properties);
+        res.json(properties.map(presentProperty));
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch properties' });
     }
@@ -20,12 +23,13 @@ const getProperties = async (req, res) => {
 
 const getProperty = async (req, res) => {
     try {
+        if (req.params.propertyId !== await installation.propertyId()) return res.status(404).json({ error: 'Property not found' });
         await expireReservations();
         const property = await prisma.property.findUnique({
             where: { id: req.params.propertyId }, include: propertyDetails,
         });
         if (!property) return res.status(404).json({ error: 'Property not found' });
-        res.json(property);
+        res.json(presentProperty(property));
     } catch {
         res.status(500).json({ error: 'Failed to fetch properties' });
     }
@@ -42,16 +46,21 @@ const createProperty = async (req, res) => {
         }
 
         const property = await prisma.$transaction(async tx => {
+        if (await tx.dormitoryInstallation.findUnique({ where: { id: installation.key } })) return null;
+        if (installation.key === 'dormify' && await tx.property.count()) return null;
         const created = await tx.property.create({
             data: {
                 name, address, city, type, rules, hasMess, ownerId
             }
         });
+        await tx.dormitoryInstallation.create({ data: { id: installation.key, propertyId: created.id } });
         await audit(tx, req.user, 'CREATE_PROPERTY', 'Property', created.id, 'สร้างข้อมูลหอพัก');
         return created;
         });
+        if (!property) return res.status(409).json({ error: 'ระบบนี้มีหอพักแล้ว กรุณาแก้ข้อมูลหอเดิม ไม่สร้างแห่งที่สอง' });
         res.status(201).json(property);
     } catch (error) {
+        if (error.code === 'P2002') return res.status(409).json({ error: 'ระบบนี้มีหอพักแล้ว กรุณาโหลดข้อมูลล่าสุด' });
         res.status(500).json({ error: 'Failed to create property' });
     }
 };
@@ -60,6 +69,7 @@ const createProperty = async (req, res) => {
 const addRoom = async (req, res) => {
     try {
         const { propertyId, roomNumber, capacity, price, type } = req.body;
+        if (propertyId !== await installation.propertyId()) return res.status(404).json({ error: 'Property not found' });
 
         const property = await prisma.property.findUnique({ where: { id: propertyId } });
         if (!property) return res.status(404).json({ error: 'Property not found' });
@@ -94,10 +104,10 @@ const getAvailableRooms = async (req, res) => {
     try {
         await expireReservations();
         const rooms = await prisma.room.findMany({
-            where: { isAvailable: true, isActive: true },
-            include: { property: true }
+            where: { isAvailable: true, isActive: true, propertyId: await installation.propertyId() },
+            include: { property: true, photos: photoSelection }
         });
-        res.json(rooms);
+        res.json(rooms.map(presentRoom));
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch rooms' });
     }
@@ -105,6 +115,7 @@ const getAvailableRooms = async (req, res) => {
 
 const updateProperty = async (req, res) => {
     try {
+        if (req.params.propertyId !== await installation.propertyId()) return res.status(404).json({ error: 'Property not found' });
         const { name, address, city, type, rules, hasMess } = req.body;
         const property = await prisma.$transaction(async tx => {
         const updated = await tx.property.update({
@@ -131,6 +142,7 @@ const roomFailure = (res, error) => {
 
 const updateRoom = async (req, res) => {
     try {
+        if (!await installation.ensureRoom(req.params.roomId)) return res.status(404).json({ error: 'Room not found' });
         const { roomNumber, capacity, price, type } = req.body;
         const result = await prisma.$transaction(async tx => {
             await lockRoom(tx, req.params.roomId);
@@ -152,6 +164,7 @@ const updateRoom = async (req, res) => {
 
 const setRoomActive = async (req, res) => {
     try {
+        if (!await installation.ensureRoom(req.params.roomId)) return res.status(404).json({ error: 'Room not found' });
         const result = await prisma.$transaction(async tx => {
             await lockRoom(tx, req.params.roomId);
             const room = await tx.room.findUnique({ where: { id: req.params.roomId } });

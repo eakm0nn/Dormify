@@ -7,9 +7,9 @@
 
 เริ่มทำงานต่อหรือย้ายเครื่อง: [สถานะล่าสุด](docs/PROJECT_STATUS.md) · [บันทึกการทำงาน](docs/WORK_LOG.md) · [คู่มือเครื่องใหม่](docs/SETUP_NEW_MACHINE.md)
 
-ส่งงานระหว่างเครื่องผ่าน [GitHub](docs/GITHUB_WORKFLOW.md)
+เตรียมส่งโครงงาน: [รายการตรวจรับและลำดับสาธิต](docs/SUBMISSION_CHECKLIST.md) · [คู่มือ Admin](docs/ADMIN_MANUAL.md) · [คู่มือ User](docs/USER_MANUAL.md) · [ผลทดสอบ](docs/TEST_RESULTS.md)
 
-หากใช้สำเนาที่มีประวัติก่อนการเริ่ม main ใหม่วันที่ 13 พฤศจิกายน 2026 ให้ Clone ใหม่ตามคู่มือ GitHub
+เอกสารถูกรวมแล้ว เริ่มจาก [สารบัญ docs](docs/README.md) วิธีส่ง GitHub/รับงานอีกเครื่องรวมอยู่ในคู่มือติดตั้ง หากใช้สำเนาก่อนเริ่ม main ใหม่วันที่ 13 พฤศจิกายน 2026 ให้ Clone โฟลเดอร์ใหม่ตามคู่มือ
 
 ## เกี่ยวกับโครงงาน
 
@@ -50,19 +50,19 @@ DORMIFY เป็นเว็บไซต์สำหรับหอพักแ
 
 ## วิธีใช้และข้อจำกัด
 
-อ่าน [ขั้นตอนบริหารหอพัก ผลตรวจ และรายการไฟล์](docs/DORM_OPERATIONS.md) ก่อนบันทึกข้อมูลจริง
+อ่าน [วิธีใช้ส่วนล่าสุด ผลตรวจ และรายการไฟล์](docs/TEST_RESULTS.md) และ [ขั้นตอนระบบพื้นฐาน](docs/ADMIN_MANUAL.md) ก่อนบันทึกข้อมูลจริง
 การอนุมัติคำขอเป็นการกันห้องชั่วคราว ต้องบันทึกสัญญาที่ลงนามแล้วและเริ่มใช้แยกต่างหาก
-Admin เป็นผู้สั่งออกบิล ยังไม่มีออกบิลอัตโนมัติ บิลปิดสัญญากลางเดือน หรือแก้มิเตอร์ย้อนหลัง
-ถ้าอัตราน้ำไฟเปลี่ยนกลางรอบ ระบบหยุดออกบิลเพื่อไม่ประมาณหน่วยเอง
-ระบบยังไม่ครอบคลุมการอัปโหลดรูปห้อง/สิ่งอำนวยความสะดวกเต็มรูปแบบ และไม่ได้รับรองว่าครบทุกข้อของ PDF
+มีรูปห้อง/สิ่งอำนวยความสะดวก แก้มิเตอร์ก่อนออกบิล/เปลี่ยนมิเตอร์ แบ่งอัตราตามจุดอ่านจริง ปิดสัญญารายวัน/คืนเงิน ใบลดหนี้ สัญญาฉบับถัดไป และแบ่งหน้า/CSV แล้ว
+Admin เปิดออกบิลอัตโนมัติในนโยบายได้ Backend ต้องทำงานอยู่และเลขมิเตอร์ต้องครบ เงินคืนต้องยืนยันตามเงินจริง ไม่โอนให้เอง
+ข้อจำกัดและหลักฐานการตรวจ PDF อยู่ในรายงานล่าสุด ไม่อ้างว่าครบทุกกรณีเพียงเพราะมีเมนู
 
 ## เทคโนโลยี
 
 | ส่วน | เทคโนโลยีที่ใช้อยู่ |
 |---|---|
-| Frontend | React 18, Vite, TypeScript 5.9 (strict) |
+| Frontend | React 18, Vite 6.4.6, TypeScript 5.9 (strict) |
 | รูปแบบหน้าจอ | Tailwind CSS, Noto Sans Thai แบบ Local, Lucide React |
-| Routing / API Client | React Router, Axios |
+| Routing / API Client | React Router 7.18.5, Axios |
 | Backend | Node.js, Express.js, JavaScript |
 | ฐานข้อมูล | MySQL 8.4 ผ่าน Docker (ฐาน dormify เดียว) |
 | ORM | Prisma 5.22.0 |
@@ -73,7 +73,7 @@ Schema/Migrations ใช้ Prisma 5.22.0 และเก็บ SQL ใน Git
 
 ## ติดตั้งและรันบน Local
 
-ต้องมี Git, Node.js/npm และ Docker Desktop ที่เปิด Engine แล้ว ใช้คำสั่งจาก Root
+ต้องมี Git, Node.js 20.19 ขึ้นไป/npm และ Docker Desktop ที่เปิด Engine แล้ว ใช้คำสั่งจาก Root แนะนำ Node 24 ที่ทดสอบแล้ว
 
 ถ้าเพิ่งติดตั้ง Docker แล้ว Terminal หา `docker` ไม่พบ ให้เปิด Terminal/VS Code ใหม่
 กรณีมี SQLite เดิมต้องตรวจข้อมูลก่อนเปลี่ยนค่า ไม่ลบไฟล์เพื่อให้ Setup ผ่าน ดู [คู่มือเตรียมเครื่องและรักษาข้อมูลเดิม](docs/SETUP_NEW_MACHINE.md)
@@ -107,7 +107,7 @@ Compose และ Migration ช่วยติดตั้งซ้ำ แต่
 
 ดูตาราง MySQL ผ่าน phpMyAdmin: รัน `npm.cmd run db:admin` แล้วเปิด http://127.0.0.1:8080
 เข้าสู่ระบบด้วย `dormify_app` และรหัส `MYSQL_PASSWORD` ใน Root .env ของเครื่องนี้ ไม่ใช่รหัส Admin ของเว็บ
-ดู [คู่มือ phpMyAdmin](docs/PHPMYADMIN.md); Backend ยังคงใช้ Prisma และฐาน dormify เดิม
+ดู [คู่มือ phpMyAdmin](docs/SETUP_NEW_MACHINE.md); Backend ยังคงใช้ Prisma และฐาน dormify เดิม
 
 ## ตรวจสอบและทดสอบ
 
@@ -154,20 +154,14 @@ Dormify/
 
 ## เอกสารประกอบ
 
-- [เริ่มใช้ Prisma สำหรับผู้เริ่มต้น](docs/PRISMA_START.md)
+- [สารบัญเอกสาร](docs/README.md)
+- [ติดตั้ง รัน ย้ายเครื่อง GitHub และดูฐานข้อมูล](docs/SETUP_NEW_MACHINE.md)
+- [โครงสร้างระบบ Prisma และแนวทางพัฒนา](docs/DEVELOPMENT.md)
+- [กติกาการเช่าล่าสุด](docs/BUSINESS_RULES.md)
+- [เทียบขอบเขต PDF 25 ข้อ](docs/analysis/REQUIREMENTS_TRACEABILITY_MATRIX.md)
+- [ผลทดสอบล่าสุดและประวัติผลเก่า](docs/TEST_RESULTS.md)
 
-- [คู่มือ Authentication และการสร้าง Admin](docs/PHASE1_AUTH.md)
-- [ธีมภาษาไทย ผลทดสอบหน้าจอ และข้อจำกัด](docs/UI_REDESIGN.md)
-- [การย้าย Frontend เป็น TypeScript และผลทดสอบ](docs/FRONTEND_TYPESCRIPT.md)
-- [คู่มือเตรียมเครื่องและ Local Environment](docs/PHASE0_SETUP.md)
-- [วิเคราะห์ขอบเขตและแผนพัฒนา](docs/analysis/README.md)
-- [แบบข้อมูลและ Business Rules](docs/analysis/PHASE1_BUSINESS_RULES_DESIGN.md)
-- [กติกาการทำงาน 14 ข้อและการยืนยันล่าสุด](docs/BUSINESS_RULES.md)
-- [ระบบบริหารหอพัก วิธีใช้และผลตรวจ](docs/DORM_OPERATIONS.md)
-- [สิ่งที่ต้องเตรียมสำหรับฐานข้อมูล](docs/DATABASE_PREPARATION.md)
-
-เอกสารบางฉบับบันทึกสถานะในแต่ละช่วงพัฒนา อาจกล่าวถึงฟังก์ชันรุ่นก่อนที่ปรับไปแล้ว
-ให้พิจารณาวันที่และขอบเขตของเอกสารนั้นร่วมด้วย
+คู่มือใช้สถานะปัจจุบัน ผลทดสอบมีวันที่กำกับ และประวัติละเอียดเก็บใน WORK_LOG แทนรายงานหลาย Phase ที่ซ้ำกัน
 
 ## ผู้พัฒนา
 

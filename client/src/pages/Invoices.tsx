@@ -5,6 +5,7 @@ import api from '../services/api';
 import type { Invoice, Lease } from '../types/operations';
 import { money, thaiDate } from '../utils/format';
 import Button from '../components/Button';
+import InvoiceTools, { AdjustmentHistory } from '../components/InvoiceTools';
 import { Heading, OperationForm, Status, Table, stateLabel } from '../components/OperationUI';
 const Invoices = () => {
   const { user } = useAuth(),
@@ -93,7 +94,11 @@ const Invoices = () => {
             ),
           },
           { title: 'ครบกำหนด', render: (row) => thaiDate(row.dueDate) },
-          { title: 'ยอดรวม', render: (row) => money(row.totalAmount) },
+          {
+            title: 'ยอดรวม',
+            align: 'right',
+            render: (row) => money(row.amountDue ?? row.totalAmount),
+          },
           { title: 'สถานะ', render: (row) => <Status value={row.status} /> },
           {
             title: 'รายละเอียด',
@@ -117,9 +122,9 @@ const Invoices = () => {
                 <tr>
                   <th>รายการ</th>
                   <th>เลขต้น–ปลาย</th>
-                  <th>หน่วย</th>
-                  <th>ราคาต่อหน่วย</th>
-                  <th>ยอด</th>
+                  <th className="numeric-cell">หน่วย</th>
+                  <th className="numeric-cell">ราคาต่อหน่วย</th>
+                  <th className="numeric-cell">ยอด</th>
                 </tr>
               </thead>
               <tbody>
@@ -127,6 +132,11 @@ const Invoices = () => {
                   <tr key={item.id}>
                     <td>
                       {stateLabel(item.itemType)}
+                      {item.periodStart && item.periodEnd && (
+                        <p className="text-xs text-muted">
+                          {thaiDate(item.periodStart)} – {thaiDate(item.periodEnd)}
+                        </p>
+                      )}
                       {item.sourceReference && (
                         <p className="text-xs text-muted">{item.sourceReference}</p>
                       )}
@@ -136,19 +146,29 @@ const Invoices = () => {
                         ? item.openingValue + ' → ' + item.closingValue
                         : '—'}
                     </td>
-                    <td>{item.quantity}</td>
-                    <td>{money(item.unitPrice)}</td>
-                    <td>{money(item.amount)}</td>
+                    <td className="numeric-cell">{item.quantity}</td>
+                    <td className="numeric-cell">{money(item.unitPrice)}</td>
+                    <td className="numeric-cell">{money(item.amount)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <p className="mt-4 text-right text-xl font-bold">รวม {money(selected.totalAmount)}</p>
+          <AdjustmentHistory invoice={selected} />
           <Button variant="ghost" onClick={() => setSelected(null)}>
             ปิดรายละเอียด
           </Button>
         </section>
+      )}
+      {isAdmin && (
+        <InvoiceTools
+          invoices={resource.data || []}
+          refresh={async () => {
+            setSelected(null);
+            await resource.refresh();
+          }}
+        />
       )}
     </>
   );

@@ -1,27 +1,37 @@
-# DORMIFY — เปิดโปรเจกต์บนเครื่องใหม่
+# ติดตั้ง รัน และย้ายเครื่อง DORMIFY
 
-อัปเดต 13 พฤศจิกายน 2026 (Asia/Bangkok)
-อ่าน [สถานะ](PROJECT_STATUS.md), [บันทึกงาน](WORK_LOG.md), [กติกา](BUSINESS_RULES.md) และตรวจ Git status ก่อนเริ่ม
-งานย้าย MySQL รอบนี้ยังไม่ Commit/Push ต้องส่งโค้ดและเอกสารให้ครบก่อนสลับเครื่อง
-สำเนาที่มีประวัติก่อนเริ่ม main ใหม่วันที่ 13 พฤศจิกายน ให้ Clone ใหม่ตาม [คู่มือ GitHub](GITHUB_WORKFLOW.md)
+รวมคู่มือ 18 พฤศจิกายน 2026 (Asia/Bangkok) ใช้ MySQL ผ่าน Docker ฐาน dormify เดียว ไม่มีขั้นตอนติดตั้ง SQLite หรือ Seed รุ่นเดิมแล้ว อ่าน [สถานะ](PROJECT_STATUS.md) ก่อนเสมอ
 
-## เครื่องมือและติดตั้ง
+## เครื่องมือและโค้ด
 
-ต้องมี Git, Node.js/npm, Docker Desktop ที่เปิด Engine แล้ว และ Chrome เฉพาะทดสอบหน้าจอ
+- Git, Node.js 20.19 ขึ้นไป (ชุดงานนี้ใช้ Node 24), npm, Docker Desktop ที่เปิด Engine แล้ว
+- Chrome เฉพาะทดสอบ UI, VS Code สำหรับพัฒนา อินเทอร์เน็ตสำหรับติดตั้งแพ็กเกจ/Docker image ครั้งแรก
+- ไม่ต้องติดตั้ง MySQL/XAMPP แยก ใช้ compose.yaml ที่ตรึง MySQL 8.4 และ phpMyAdmin แบบ Local
 
-Docker Desktop อาจติดตั้งแบบรายผู้ใช้ที่ `%LOCALAPPDATA%\Programs\DockerDesktop`
-ถ้า Terminal เก่าหา `docker` ไม่พบ ให้เปิด Terminal/VS Code ใหม่เพื่อรับ User PATH หรือเพิ่มเฉพาะ Terminal ปัจจุบัน:
+เครื่องเดิมต้องส่งงานล่าสุดขึ้น GitHub ให้ครบก่อน Clone จึงจะได้งานใหม่ Git ไม่ส่ง .env/ฐานข้อมูลไปด้วย
+
+```powershell
+git clone https://github.com/eakm0nn/Dormify.git
+cd Dormify
+node --version
+npm.cmd --version
+git --version
+docker version
+```
+
+PowerShell ใช้ npm.cmd เพื่อเลี่ยง Execution Policy ของ npm.ps1 ระบบอื่นใช้ npm ได้ ตรวจ docker version ต้องมี Server ไม่ใช่เพียง CLI
+
+หาก Docker ติดตั้งรายผู้ใช้และ Terminal เก่าหาไม่เจอ เปิด Terminal ใหม่ หรือเพิ่ม PATH เฉพาะ Terminal:
 
 ```powershell
 $env:Path = (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin') + ';' + $env:Path
 ```
 
-ตรวจ `docker version` ให้มี Server ก่อน `db:up`; การพบ Docker CLI อย่างเดียวยังไม่ยืนยันว่า Engine พร้อม
+## ติดตั้งครั้งแรก
 
-เครื่องนี้ตรวจด้วย Windows, Node 24.15.0, npm 11.12.1, Docker Engine 29.7.2, Compose 5.5.1
-รันจาก Root ใช้ npm.cmd บน PowerShell เพื่อเลี่ยง npm.ps1 ระบบอื่นใช้ npm ได้
+รันจาก Root:
 
-~~~powershell
+```powershell
 npm.cmd ci
 npm.cmd --prefix server ci
 npm.cmd --prefix client ci
@@ -29,77 +39,103 @@ npm.cmd run setup
 npm.cmd run db:up
 npm.cmd run db:setup
 npm.cmd --prefix server run db:check
-~~~
-
-ใช้ Lockfile ทั้งสามส่วน Prisma ตรึง 5.22.0 ไม่ติดตั้งรุ่นล่าสุดแทนเอง
-ไฟล์ Frontend ที่ Prettier ตรวจใช้ LF ตาม .gitattributes เพื่อให้ format:check ให้ผลเหมือนกันข้ามเครื่อง แม้ Git บน Windows เปิด core.autocrlf
-การลบใบอนุญาตใน node_modules ที่เคยสั่งเป็นสถานะเฉพาะเครื่อง npm ci สร้างกลับตามแพ็กเกจ ไม่มีระบบลบอัตโนมัติ
-
-## Environment และฐานข้อมูล
-
-setup สร้าง Root .env, server/.env, client/.env พร้อมสุ่มรหัสผ่าน/JWT Secret ไม่แสดงค่าและไม่ทับค่าที่มีอยู่
-Root .env สร้างด้วย setup โดยตรง ไม่มี Root .env.example แล้วตามคำขอเพื่อลดความสับสน
-ตัวอย่างของ Frontend/Backend ยังอยู่ใน client/.env.example และ server/.env.example; ค่าจริงห้ามใส่ในแชต บันทึก หรือ Git
-ห้ามใส่รหัสฐาน/JWT_SECRET ใน VITE_* เพราะ Frontend อ่านได้
-
-Compose ใช้ MySQL 8.4 ตรึง digest พอร์ต 127.0.0.1:3306 ฐาน dormify บัญชีแอป dormify_app แยกจาก Root
-db:setup สร้าง Prisma Client และใช้ migrate deploy ไม่ Reset/Seed หรือสร้าง Test/Shadow database
-หยุด Backend ก่อน db:setup โดยเฉพาะ Windows ที่อาจล็อก Prisma Engine
-หลังรับงานจัดการห้องวันที่ 14 พฤศจิกายน ให้รัน db:setup เพื่อเพิ่ม Room.isActive ด้วย Migration 20261114000000_room_active ห้องเดิมเปิดใช้งานเหมือนเดิม ไม่ใช้ db push/reset เพื่อข้าม Migration ดู [รายละเอียดจัดการห้อง](ROOM_MANAGEMENT.md)
-
-หากพอร์ตชน ตั้ง MYSQL_PORT ใน Root .env ก่อน setup ครั้งแรก
-หาก DATABASE_URL เดิมไม่ตรง Compose สคริปต์หยุดให้ตรวจเอง ไม่เขียนทับ
-หากพบ SQLite เดิม (file: URL หรือ server/prisma/dev.db) สคริปต์หยุดรักษาข้อมูล ต้องวางแผนนำเข้าก่อน ไม่มีการนำเข้าอัตโนมัติ
-
-ตัวอย่างที่ตรวจจริงบนเครื่อง D:\Code\dormify วันที่ 14 พฤศจิกายน: SQLite เดิมว่างทั้งเจ็ดตารางและ Integrity ผ่าน
-จึงเก็บไฟล์แบบไม่เปลี่ยน Bytes ใน `server/prisma/backups/before-mysql-20261114.db` และเก็บ Environment เดิมใน `server/.env.before-mysql-20261114`
-จากนั้นจึงเปลี่ยน DATABASE_URL และตั้งค่า MySQL ไม่มีข้อมูลจริงให้ Import ห้ามนำข้อสรุปว่าฐานว่างไปใช้กับเครื่องอื่นโดยไม่ตรวจ
-ไฟล์ Backup ทั้งสองถูก Ignore; หากมีข้อมูลจริงให้หยุดและวางแผน Mapping/Import/กระทบยอดก่อน ไม่ย้ายไฟล์หลบ Guard เพื่อข้ามการตรวจ
-
-หากมีหลายหอในข้อมูลเดิม ตั้ง VITE_DORMITORY_ID ใน client/.env เป็นหอที่ต้องการ
-
-## สร้าง Admin และเปิดระบบ
-
-~~~powershell
 npm.cmd --prefix server run admin:create
-npm.cmd run dev
-~~~
+npm.cmd start
+```
 
-กรอกอีเมล ชื่อ และรหัสผ่านอย่างน้อย 12 ตัวอักษร ไม่เกิน 72 UTF-8 bytes ใน Terminal
-ไม่มีบัญชี Default ไม่ยกสิทธิ์/เขียนทับอีเมลเดิม จากนั้นเข้าสู่ระบบ Admin เพื่อบันทึกข้อมูลหอพักและห้องจริง
+- ci ใช้ Lockfile ทั้งสามส่วน ไม่ติดตั้งรุ่นล่าสุดแทนเอง Prisma ตรึง 5.22.0
+- setup สร้าง Root .env, server/.env และ client/.env สุ่มรหัส MySQL/JWT Secret ไม่แสดงค่าและรักษาค่าที่มีอยู่ ตัวอย่าง Frontend/Backend เป็นคำอธิบาย ไม่ใช่ค่าจริงของเครื่อง
+- db:setup Generate Client และ migrate deploy จาก SQL ที่มี 7 Migrations รวม 30 Models ไม่มี Reset/Seed/Test/Shadow database
+- Admin CLI ถามอีเมล ชื่อ รหัสอย่างน้อย 12 ตัวอักษร/ไม่เกิน 72 UTF-8 bytes ซ่อนรหัส ไม่มี Default account และไม่ยกสิทธิ์อีเมลเดิม สมัครทั่วไปได้เฉพาะ USER
+- เว็บ http://127.0.0.1:5173 และ API http://127.0.0.1:5000 เปิดเฉพาะ Local loopback
 
-- เว็บ http://127.0.0.1:5173
-- API http://127.0.0.1:5000
-- Ctrl+C หยุดเว็บ/API ส่วน MySQL ยังทำงาน
+ฐานใหม่ไม่มีหอ/ห้อง/ผู้เช่าอัตโนมัติ เพิ่มผ่าน Admin ตาม [คู่มือ](ADMIN_MANUAL.md) หากต้องการข้อมูลเดิมต้องนำเข้าฐานแยก ไม่เริ่มฐานว่างแทนโดยไม่ตรวจ
 
-Root dev เปิดสองส่วน แต่ Backend ใช้ node จึงไม่ Restart เมื่อแก้ไฟล์
-ถ้าต้องการ Restart เปิดสอง Terminal ด้วย npm.cmd --prefix server run dev และ npm.cmd --prefix client run dev
+## เปิดงานประจำและรับโค้ดใหม่
 
-## การเก็บข้อมูลและข้ามเครื่อง
-
-ดูตารางผ่านเบราว์เซอร์ได้ด้วย npm.cmd run db:studio จาก Root แล้วเปิด http://127.0.0.1:5555 และเปิด Terminal นี้ค้างไว้ กด Ctrl+C เพื่อหยุด Studio
-MySQL พอร์ต 3306 เป็นการเชื่อมต่อฐานข้อมูลโดยตรง ไม่ใช่ HTTP
-เปิด phpMyAdmin ด้วย `npm.cmd run db:admin` แล้วเข้า http://127.0.0.1:8080 ใช้บัญชี `dormify_app` และรหัส `MYSQL_PASSWORD` จาก Root .env ไม่ใช่รหัส Admin ของเว็บ ดู [คู่มือ phpMyAdmin](PHPMYADMIN.md)
-phpMyAdmin ใช้ฐาน/Volume เดิมและเปิดเฉพาะ loopback; หยุดเฉพาะเครื่องมือด้วย `npm.cmd run db:admin:stop` ส่วน `db:stop` หยุดทั้ง MySQL และ phpMyAdmin ไม่ลบข้อมูล
-หากใช้ Workbench/DBeaver ให้ตั้ง Host 127.0.0.1, Port ตาม MYSQL_PORT (ปกติ 3306), Database dormify, User dormify_app และใช้รหัสจาก MYSQL_PASSWORD ใน Root .env ของเครื่องตนเอง ไม่ใช้รหัสผ่านบัญชี Admin ของเว็บ
-Studio ใช้ค่าฝั่ง Server โดยอัตโนมัติ ไม่ต้องคัดลอกรหัสผ่าน และแก้ไข/ลบข้อมูลจริงได้ จึงตรวจรายการก่อนบันทึก
-
-~~~powershell
-npm.cmd run db:status
-npm.cmd run db:stop
+```powershell
 npm.cmd run db:up
-~~~
+npm.cmd start
+```
 
-ข้อมูลอยู่ใน Named volume dormify_mysql_data ไม่หายเมื่อหยุด/สร้าง Container ใหม่ ห้ามลบ Volume หรือใช้ docker compose down -v เพื่อแก้การติดตั้ง
-ค่า MYSQL_* ใช้ตอนเริ่ม Volume ครั้งแรก การแก้รหัสใน .env ไม่เปลี่ยนรหัสในฐานเดิม
-Compose/Schema/Migrations ตาม Git แต่ Volume และ .env ไม่ตาม Git ไม่ใช่ระบบ Sync
-หากต้องการข้อมูลเดิม ต้องย้าย MySQL/ไฟล์แนบด้วย Export/Import ที่กระทบยอดแยกก่อน ไม่เริ่มฐานว่างแทนโดยพลการ
+Ctrl+C หยุดเว็บ/API แต่ MySQL ยังอยู่ Root start/dev ใช้ node กับ Backend ไม่ Restart เมื่อแก้ไฟล์ ถ้าพัฒนาต่อเปิดสอง Terminal:
 
-## ตรวจสอบ
+```powershell
+npm.cmd --prefix server run dev
+npm.cmd --prefix client run dev
+```
 
-เปิด MySQL และทำ db:setup ก่อน หยุดการใช้งานจริงชั่วคราว รัน API/UI ตามลำดับ:
+เมื่อรับ Schema/Migration ใหม่ **หยุด Backend ก่อน db:setup** โดยเฉพาะ Windows ที่ล็อก Prisma Engine อัปเดตด้วย ci หาก Lockfile เปลี่ยน ไม่ใช้ db push/reset/migrate dev ข้ามประวัติ
 
-~~~powershell
+## ดูฐานข้อมูล
+
+| เครื่องมือ | เปิด/เข้าใช้งาน | ข้อควรทราบ |
+|---|---|---|
+| Prisma Studio | npm.cmd run db:studio → http://127.0.0.1:5555 | ใช้ server/.env เปิด Terminal ค้างไว้ Ctrl+C หยุด |
+| phpMyAdmin | npm.cmd run db:admin → http://127.0.0.1:8080 | User dormify_app; รหัส MYSQL_PASSWORD จาก Root .env ไม่ใช่รหัส Admin เว็บ |
+| Workbench/DBeaver | Host 127.0.0.1, Port 3306 หรือ MYSQL_PORT, Database dormify, User dormify_app | ใช้รหัส MySQL ของเครื่อง พอร์ตนี้ไม่ใช่ HTTP |
+
+phpMyAdmin ตั้ง Server เป็น mysql ใน Docker ไม่มี Auto-login หรือฝัง Root password เครื่องมือทั้งหมดแก้/ลบข้อมูลจริงและข้าม Validation เว็บ เพิ่มห้อง/บัญชี/การเงินผ่านเว็บหรือ CLI ที่กำหนด อย่ากรอกรหัสผ่านธรรมดาลง User และอย่าแก้โครงสร้างจน Schema/Migration ไม่ตรง
+
+```powershell
+npm.cmd run db:status
+npm.cmd run db:admin:stop
+npm.cmd run db:stop
+```
+
+admin:stop หยุดเฉพาะ phpMyAdmin; db:stop หยุด phpMyAdmin/MySQL ไม่ลบ Volume; db:up เปิดเฉพาะ MySQL
+
+## Environment และแก้ปัญหา
+
+- Root .env คุม Compose, server/.env ใช้ DATABASE_URL/JWT_SECRET, client/.env ใช้ VITE_API_URL ห้ามใส่รหัสฐานหรือ Secret ใน VITE_* เพราะเว็บอ่านได้
+- Access denied 1045: ตรวจบัญชี/รหัส .env ตัวจริง ไม่ใช่ .env.example ล้างรหัสเก่าที่ Browser เติม ตรวจ DATABASE_URL ให้ Host/Port/รหัสตรงกัน การแก้ .env ไม่เปลี่ยนรหัสใน Volume เดิม ต้องซิงก์บัญชีฐานให้ถูกต้องแล้ว Restart **ห้ามลบ Volume เพื่อแก้รหัส**
+- พอร์ตชน: ตรวจโปรแกรมเดิมก่อน MYSQL_PORT/PHPMYADMIN_PORT อยู่ใน Root .env เปลี่ยนแล้วปรับ URL ฝั่ง Server ให้ตรง ไม่เปิด Public interface
+- ถ้าพบ URL แบบ file: หรือ server/prisma/dev.db สคริปต์หยุดรักษาข้อมูล ต้องตรวจ Mapping/นำเข้า/กระทบยอดก่อน ไม่ย้ายไฟล์หลบ Guard หรือ Reset
+- ทะเบียนหอผูก Property เดิมอัตโนมัติเฉพาะพบหนึ่งแห่ง หากหลายแห่งจะไม่เดา ต้องตรวจข้อมูลเดิมก่อน ไม่ใช้ VITE_DORMITORY_ID ข้าม Backend หอเดียว และไม่ต้องตั้ง DORMIFY_INSTALLATION_KEY ในการใช้ปกติ
+- ใบปรับเก่า itemType/refundEligible เป็น NULL ต้องตรวจหลักฐาน ไม่เติม true อัตโนมัติ
+
+## ย้ายข้อมูลไปเครื่องอื่น
+
+ข้อมูลอยู่ใน Named volume dormify_mysql_data รวมรูปห้อง/หลักฐานใน MySQL หยุดหรือสร้าง Container ใหม่ด้วย Volume เดิมไม่ทำให้หาย ห้ามลบ Volume หรือ docker compose down -v
+
+Git ส่ง Source/Compose/Schema/Migrations ไม่ส่งฐาน .env หรือรหัส Admin ย้ายข้อมูลด้วย Export/Import ผ่านช่องทางส่วนตัว ตรวจจำนวน/ยอด/ความสัมพันธ์ก่อน–หลัง ไม่ Import ทับฐานที่มีข้อมูลโดยไม่ตรวจ ไม่ Commit dump/สลิป/Secret ไม่มีระบบ Sync อัตโนมัติ
+
+สำรอง SQLite/Environment เก่าที่ Ignore ยังอาจอยู่ ห้ามสรุปว่าฐานนั้นว่างตามผลเก่าของอีกเครื่อง ประวัติวันที่ 13–14 พฤศจิกายนอยู่ใน WORK_LOG.md
+
+## ส่งและรับงานผ่าน GitHub
+
+ตรวจรายการก่อนทำคำสั่งส่งงาน ไม่ Commit/Push อัตโนมัติเมื่อผู้ใช้ไม่ได้สั่ง:
+
+```powershell
+npm.cmd run check:delivery
+git status
+git diff --stat
+git add .
+git diff --cached --stat
+git status
+git commit -m "Update Dormify and project documentation"
+git push -u origin main
+```
+
+add . รวมไฟล์ใหม่ที่ไม่ Ignore ด้วย ห้าม add -f ไฟล์ลับ ถ้า Git ขอ Login ใช้บัญชีที่มีสิทธิ์ของตน ไม่ส่ง Token/รหัสในแชท ถ้าไม่ใช่ Fast-forward ให้ตรวจ/รวมงานทั้งสองฝั่ง ไม่ Force Push หรือ Reset ทิ้งงาน
+
+สำเนาที่ Clone หลังเริ่มประวัติ main ใหม่วันที่ 13 พฤศจิกายนและ Working Tree สะอาด ใช้:
+
+```powershell
+git status
+git pull --ff-only origin main
+```
+
+สำเนาก่อนเริ่ม main ใหม่ควร Clone โฟลเดอร์ใหม่ ไม่ Merge/Rebase ประวัติเก่ากลับ ตรวจงานค้าง .env/ฐานของสำเนาเก่าก่อนเปลี่ยน เครื่องที่มี origin แล้วไม่ต้อง git init/remote add ซ้ำ
+
+ก่อนย้ายเครื่องอัปเดต PROJECT_STATUS/WORK_LOG ตรวจส่งไฟล์ใหม่ครบและ Push สำเร็จ แล้วอ่านสองไฟล์นี้ที่เครื่องปลายทางก่อนพัฒนาต่อ
+
+## ทดสอบ
+
+เปิด MySQL/db:setup ให้พร้อม หยุดใช้งานจริงชั่วคราว รัน API ก่อน UI ตามลำดับ ห้ามรันคู่กันหรือระหว่างแก้ข้อมูลจริง:
+
+```powershell
+npm.cmd run check:delivery
 npm.cmd --prefix server test
 npm.cmd --prefix client run test:ui
 npm.cmd --prefix client test
@@ -107,17 +143,8 @@ npm.cmd --prefix client run lint
 npm.cmd --prefix client run format:check
 npm.cmd --prefix client run build
 npm.cmd --prefix server run db:check
-~~~
+```
 
-API/UI ใช้ Fixture namespace สุ่มใน dormify เดียว ลบเฉพาะข้อมูลที่สร้างเอง และเทียบแฮชข้อมูลเดิมเจ็ดตาราง ไม่ Reset/Seed/สร้างฐานเพิ่ม
-หากมีข้อมูลอื่นเชื่อมเข้า Fixture จะหยุดลบเพื่อรักษาข้อมูล
-Fixture มองเห็นระหว่างทดสอบ ถ้า Process ถูกบังคับหยุดให้ตรวจ namespace ที่ค้าง ไม่ล้างตารางทั้งหมด
-ห้ามรัน API/UI พร้อมกันหรือระหว่างคนแก้ข้อมูล เพราะการตรวจข้อมูลเดิมจะรายงานความเปลี่ยนแปลงนั้นด้วย
-UI ใช้ Chrome ที่ติดตั้ง หากพาธต่างตั้ง CHROME_PATH ผลอยู่ใน client/.ui-artifacts/ ไม่ตาม Git
+Fixture namespace สุ่มอยู่ใน dormify เดียว ลบเฉพาะของตนและเทียบ Hash ข้อมูลเดิมครบ 30 Models หากมีคนนอกเชื่อมข้อมูล/Cleanup ไม่ผ่านให้ตรวจและหยุด ไม่ล้างตาราง Chrome พาธต่างตั้ง CHROME_PATH ผล/ภาพใน client/.ui-artifacts/ ที่ Ignore
 
-ผลเครื่องนี้: Backend 23/23, Frontend 3/3, Chrome 17 กลุ่ม, Lint/Format/Build ผ่าน ต้องทดสอบใหม่บนเครื่องใหม่
-อัปเดต WORK_LOG/PROJECT_STATUS ทุกครั้งตาม AGENTS.md ระบบสัญญา/มิเตอร์/บิล/การเงินมีการทำงานจริงแล้ว อ่าน [วิธีใช้และข้อจำกัด](DORM_OPERATIONS.md)
-
-หลังรับโค้ดชุดบริหารหอพัก ให้หยุดเว็บ/API ชั่วคราวแล้ว `npm.cmd --prefix server run db:setup` เพื่อ Generate Client และใช้ Migration เพิ่มตาราง/ขยายความจุราคา ไม่ใช้ Reset หรือ Seed และไม่สร้างฐาน Test/Shadow
-Migration เพิ่มนโยบายเริ่มต้นที่ผู้ใช้ยืนยัน 72 ชั่วโมง/ประกัน 1 เดือน/ครบกำหนด 5 วัน ไม่มีบัญชีหรือห้องจำลอง ต้องมีบัญชี USER ก่อนทำสัญญา Admin เปลี่ยนนโยบายได้ที่ข้อมูลหอพัก
-กรอกอัตราน้ำไฟและที่มาที่เจ้าของตรวจเองก่อนออกบิลรอบที่มีน้ำไฟ ข้อมูลเครื่องเดิมยังอยู่ใน Docker volume ของเครื่องเดิม Git ไม่ได้ส่งฐานข้อมูลหรือ Secret มาให้อัตโนมัติ
+ผลที่ผ่านมาอ่าน [TEST_RESULTS.md](TEST_RESULTS.md) แบบตรวจเครื่องอื่นจริงอยู่ใน [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md) Build เครื่องเดิมไม่ยืนยันการติดตั้งอีกเครื่อง

@@ -17,8 +17,19 @@ const PolicyPanel = () => {
         holdHours: String(resource.data.holdHours),
         depositMonths: String(resource.data.depositMonths),
         dueDays: String(resource.data.dueDays),
+        autoBilling: resource.data.autoBilling ? 'true' : 'false',
       }}
       fields={[
+        {
+          name: 'autoBilling',
+          label: 'ออกบิลอัตโนมัติเมื่อถึงรอบและข้อมูลครบ',
+          type: 'select',
+          required: true,
+          options: [
+            { value: 'false', label: 'ปิด' },
+            { value: 'true', label: 'เปิด (Backend ต้องทำงานอยู่)' },
+          ],
+        },
         {
           name: 'holdHours',
           label: 'ระยะกันห้องหลังอนุมัติ (ชั่วโมง)',
@@ -47,7 +58,12 @@ const PolicyPanel = () => {
       onSubmit={async (values) => {
         await api.post(
           '/api/operations/policy',
-          Object.fromEntries(Object.entries(values).map(([key, value]) => [key, Number(value)])),
+          Object.fromEntries(
+            Object.entries(values).map(([key, value]) => [
+              key,
+              key === 'autoBilling' ? value === 'true' : Number(value),
+            ]),
+          ),
         );
         await resource.refresh();
       }}

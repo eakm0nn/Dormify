@@ -6,6 +6,7 @@ import api from '../services/api';
 import type { Lease, Options, Policy } from '../types/operations';
 import { money, thaiDate } from '../utils/format';
 import Button from '../components/Button';
+import LeaseTools from '../components/LeaseTools';
 import {
   ConfirmAction,
   Heading,
@@ -31,6 +32,10 @@ const Leases = () => {
   const [editing, setEditing] = useState<Lease | null | undefined>(undefined),
     [selected, setSelected] = useState<Lease | null>(null),
     [success, setSuccess] = useState('');
+  const [closingId, setClosingId] = useState<number | null>(null);
+  const revisions = useApiResource<
+    { id: number; kind: string; reason: string; createdAt: string }[]
+  >(selected ? '/api/operations/leases/' + selected.id + '/revisions' : null, 'โหลดประวัติสัญญาไม่ได้');
   const refresh = async () => {
     await Promise.all([resource.refresh(), options.refresh(), refreshRooms()]);
   };
@@ -172,6 +177,7 @@ const Leases = () => {
           },
           {
             title: 'ค่าเช่า / ประกัน',
+            align: 'right',
             render: (row) => (
               <>
                 {money(row.monthlyRent)} / เดือน
@@ -205,15 +211,16 @@ const Leases = () => {
                   </>
                 )}
                 {isAdmin && row.status === 'ACTIVE' && (
-                  <ConfirmAction
-                    label="จบสัญญา"
-                    description="สิ้นสุดการครอบครองห้อง เก็บประวัติและหนี้เดิม เงินประกันต้องบันทึกคืนจริงแยกต่างหาก"
-                    onConfirm={async () => {
-                      await api.post('/api/operations/leases/' + row.id + '/end');
-                      setSuccess('จบสัญญาแล้ว');
-                      await refresh();
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setClosingId(row.id);
+                      document.getElementById('closeout-tools')?.scrollIntoView();
                     }}
-                  />
+                  >
+                    ปิดยอดและจบสัญญา
+                  </Button>
                 )}
               </div>
             ),
@@ -231,6 +238,18 @@ const Leases = () => {
             วันหลังออกบิล
           </p>
           <h3 className="mt-4 font-semibold">ผู้พักร่วม</h3>
+          {!!revisions.data?.length && (
+            <div className="my-4">
+              <h3 className="font-semibold">ประวัติการเปลี่ยนแปลงสัญญา</h3>
+              {revisions.data.map((row) => (
+                <p key={row.id} className="mt-2 text-sm">
+                  {thaiDate(row.createdAt)} ·{' '}
+                  {row.kind === 'AMEND' ? 'แก้วันสิ้นสุด' : row.kind === 'RENEW' ? 'ต่ออายุ' : 'ย้ายห้อง'} ·{' '}
+                  {row.reason}
+                </p>
+              ))}
+            </div>
+          )}
           {selected.occupants.length ? (
             <ul className="mt-2 space-y-1">
               {selected.occupants.map((person) => (
@@ -255,6 +274,14 @@ const Leases = () => {
             ปิดรายละเอียด
           </Button>
         </section>
+      )}
+      {isAdmin && (
+        <LeaseTools
+          leases={resource.data || []}
+          options={options.data}
+          refresh={refresh}
+          selectedLeaseId={closingId}
+        />
       )}
     </>
   );

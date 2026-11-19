@@ -46,15 +46,15 @@ const MyBookings = ({ roomView = false }) => {
           </EmptyState>
         </section>
       ) : (
-        <div className="space-y-4">
+        <div className="bookings-list border-t border-line">
           {bookings.map((booking) => {
             const status = bookingStatus(booking.status);
             return (
-              <article className="surface p-5 sm:p-6" key={booking.id}>
+              <article className="border-b border-line py-5 sm:py-6" key={booking.id}>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex gap-4">
-                    <span className="section-icon">
-                      <BedDouble className="h-6 w-6" />
+                    <span className="mt-1 text-brand">
+                      <BedDouble className="h-5 w-5" aria-hidden="true" />
                     </span>
                     <div>
                       <p className="text-xs text-muted">รายการเช่า #{booking.id}</p>

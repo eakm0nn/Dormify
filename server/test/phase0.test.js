@@ -229,8 +229,10 @@ test('Admin/User authentication: real HTTP API with scoped MySQL fixtures', { ti
         assert.equal((await request('/api/properties/rooms', 'POST', { ...room, roomNumber: ' TEST-101 ' }, adminToken)).status, 409);
         await assert.rejects(prisma.room.create({ data: room }), { code: 'P2002' });
         const otherProperty = await request('/api/properties', 'POST', { name: 'Second property', address: 'Test', city: 'Bangkok', type: 'HOSTEL' }, adminToken);
-        assert.equal(otherProperty.status, 201);
-        assert.equal((await request('/api/properties/rooms', 'POST', { ...room, propertyId: otherProperty.data.id, price: 0 }, adminToken)).status, 201);
+        assert.equal(otherProperty.status, 409);
+        const legacy = await prisma.property.create({ data: { name: 'Legacy outside installation', address: 'Fixture', city: 'Fixture', type: 'HOSTEL', ownerId: jwt.decode(adminToken).userId } });
+        assert.equal((await request('/api/properties/rooms', 'POST', { ...room, propertyId: legacy.id, price: 0 }, adminToken)).status, 404);
+        assert.equal((await request('/api/properties/' + legacy.id)).status, 404);
         const details = await request('/api/properties/' + propertyId);
         assert.equal(details.status, 200);
         assert.equal(details.data.id, propertyId);

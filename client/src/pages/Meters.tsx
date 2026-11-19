@@ -3,6 +3,7 @@ import api from '../services/api';
 import type { Options, Rate, Reading } from '../types/operations';
 import { thaiDate } from '../utils/format';
 import { Heading, OperationForm, Table, stateLabel, today } from '../components/OperationUI';
+import MeterTools from '../components/MeterTools';
 const utilities = [
   { value: 'WATER', label: 'น้ำ' },
   { value: 'ELECTRICITY', label: 'ไฟฟ้า' },
@@ -66,7 +67,8 @@ const Meters = () => {
           { title: 'ห้อง', render: (row) => row.room.roomNumber },
           { title: 'ประเภท', render: (row) => stateLabel(row.utilityType) },
           { title: 'วันที่', render: (row) => thaiDate(row.readingDate) },
-          { title: 'เลขสะสม', render: (row) => row.value },
+          { title: 'เลขหน้าปัด', render: (row) => row.rawValue ?? row.value },
+          { title: 'เลขสะสมสำหรับคิดหน่วย', render: (row) => row.value },
         ]}
       />
       <div className="mt-7">
@@ -114,6 +116,11 @@ const Meters = () => {
           { title: 'มีผล', render: (row) => thaiDate(row.effectiveFrom) },
           { title: 'ที่มา', render: (row) => row.sourceReference },
         ]}
+      />
+      <MeterTools
+        readings={readings.data || []}
+        options={options.data}
+        refresh={readings.refresh}
       />
     </>
   );

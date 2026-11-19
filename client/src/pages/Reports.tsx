@@ -6,6 +6,7 @@ import { money, thaiDate } from '../utils/format';
 import Button from '../components/Button';
 import { ErrorMessage } from '../components/Feedback';
 import { Heading, OperationForm, Table } from '../components/OperationUI';
+import { downloadCsv } from '../utils/csv';
 const Reports = () => {
   const [query, setQuery] = useState(''),
     [editing, setEditing] = useState<Expense | null>(null);
@@ -29,9 +30,34 @@ const Reports = () => {
       />
       {report.error && <ErrorMessage message={report.error} onRetry={report.refresh} />}
       {report.data && (
+        <Button
+          variant="outline"
+          className="mb-4"
+          onClick={() => {
+            const data = report.data!;
+            downloadCsv(
+              ['รายรับสุทธิ', 'รายจ่าย', 'ส่วนต่างดำเนินงาน', 'รับประกัน', 'คืนประกัน', 'ยอดค้าง'],
+              [
+                [
+                  data.receipts,
+                  data.expenses,
+                  data.operatingBalance,
+                  data.depositReceived,
+                  data.depositRefunded,
+                  data.outstanding,
+                ],
+              ],
+              'dormify-summary',
+            );
+          }}
+        >
+          ส่งออกสรุปรายงาน CSV
+        </Button>
+      )}
+      {report.data && (
         <div className="mb-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {[
-            ['รายรับยืนยันแล้ว', money(report.data.receipts)],
+            ['รายรับสุทธิหลังคืนเงิน', money(report.data.receipts)],
             ['รายจ่ายดำเนินงาน', money(report.data.expenses)],
             ['ส่วนต่างดำเนินงาน', money(report.data.operatingBalance)],
             ['รับเงินประกันในช่วง', money(report.data.depositReceived)],
@@ -88,7 +114,7 @@ const Reports = () => {
           { title: 'วันที่จ่าย', render: (row) => thaiDate(row.expenseDate) },
           { title: 'หมวด', render: (row) => row.category },
           { title: 'รายการ', render: (row) => row.description },
-          { title: 'จำนวนเงิน', render: (row) => money(row.amount) },
+          { title: 'จำนวนเงิน', align: 'right', render: (row) => money(row.amount) },
           {
             title: 'ดำเนินการ',
             render: (row) => (

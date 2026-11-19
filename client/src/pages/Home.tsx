@@ -6,26 +6,50 @@ import {
   Mail,
   MapPin,
   Search,
-  ShieldCheck,
-  Utensils,
   Wind,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { EmptyState, ErrorMessage, Loading } from '../components/Feedback';
 import FilterSidebar from '../components/FilterSidebar';
 import HeroVisual from '../components/HeroVisual';
 import PropertyCard from '../components/PropertyCard';
+import FadeContent from '../components/reactbits/FadeContent';
 import { useDormitory } from '../context/DormitoryContext';
 import { money } from '../utils/format';
-import type { Room } from '../types/api';
+import type { Room, RoomFilters } from '../types/api';
 
 const emptyRooms: Room[] = [];
 
 const initialFilters = { availability: 'all', type: 'all', priceMax: '' };
 const Home = () => {
   const { dormitory, loading, error, refresh } = useDormitory();
-  const [query, setQuery] = useState('');
-  const [filters, setFilters] = useState(initialFilters);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const savedSearch = location.state?.roomSearch;
+  const [query, setQuery] = useState<string>(
+    typeof savedSearch?.query === 'string' ? savedSearch.query : '',
+  );
+  const [filters, setFilters] = useState<RoomFilters>(() => ({
+    availability: ['all', 'available', 'occupied'].includes(savedSearch?.filters?.availability)
+      ? savedSearch.filters.availability
+      : 'all',
+    type: ['all', 'AC', 'NON-AC'].includes(savedSearch?.filters?.type)
+      ? savedSearch.filters.type
+      : 'all',
+    priceMax:
+      typeof savedSearch?.filters?.priceMax === 'string' ? savedSearch.filters.priceMax : '',
+  }));
+  const rememberSearch = (nextQuery: string, nextFilters: RoomFilters) =>
+    navigate(location.pathname + location.search + location.hash, {
+      replace: true,
+      state: {
+        ...location.state,
+        publicNavigation: false,
+        roomSearch: { query: nextQuery, filters: nextFilters },
+      },
+      preventScrollReset: true,
+    });
   const rooms = (dormitory?.rooms ?? emptyRooms).filter((room) => room.isActive);
   const available = rooms.filter((room) => room.isAvailable);
   const filtered = useMemo(
@@ -42,75 +66,61 @@ const Home = () => {
   );
   const lowestPrice = rooms.length ? Math.min(...rooms.map((room) => Number(room.price))) : null;
   const amenities = [
+    ...(dormitory?.amenities || []).map((label) => ({ label, icon: CheckCircle2 })),
     ...(rooms.some((room) => room.type === 'AC') ? [{ label: 'ห้องพักปรับอากาศ', icon: Wind }] : []),
     ...(rooms.some((room) => room.type === 'NON-AC')
       ? [{ label: 'ห้องพักพัดลม', icon: BedDouble }]
       : []),
-    ...(dormitory?.hasMess ? [{ label: 'บริการอาหาร', icon: Utensils }] : []),
   ];
   return (
-    <>
-      <section className="hero-sky relative overflow-hidden border-b border-line">
-        <div className="hero-grid absolute inset-0 pointer-events-none" />
-        <div className="container-page relative grid items-center gap-8 py-12 md:grid-cols-[1.15fr_1fr] md:py-20">
-          <div className="fade-in">
-            <p className="eyebrow mb-5">
-              <span className="h-2 w-2 rounded-full bg-skybrand" />
-              ยินดีต้อนรับสู่ {dormitory?.name || 'DORMIFY'}
-            </p>
-            <h1 className="text-4xl font-bold leading-[1.5] tracking-tight sm:text-5xl">
+    <div className="public-home">
+      <section className="hero-sky border-b border-line">
+        <div className="container-page home-intro grid items-center gap-5 py-6 md:grid-cols-[minmax(0,1fr)_240px] md:gap-12">
+          <FadeContent className="hero-copy">
+            <p className="mb-3 text-sm font-medium text-muted">{dormitory?.name || 'DORMIFY'}</p>
+            <h1 className="home-title">
               ห้องที่ใช่
               <br />
               <span className="text-brand">สำหรับทุกวันของคุณ</span>
             </h1>
-            <p className="mt-5 max-w-lg text-base leading-8 text-muted">
-              ดูรายละเอียดห้องพัก ราคา และสถานะห้องว่างได้ในที่เดียว เลือกห้องที่เหมาะกับคุณ แล้วส่งคำขอเช่าผ่านเว็บไซต์
+            <p className="mt-4 max-w-lg text-sm leading-7 text-muted">
+              เลือกห้องและส่งคำขอเช่าผ่านเว็บไซต์ ผู้ดูแลจะตรวจสอบและนัดหมายทำสัญญาภายหลัง
             </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <a href="#rooms" className="btn btn-primary">
+            <div className="mt-5 flex flex-wrap items-center gap-5">
+              <Link
+                to="/#rooms"
+                state={{ ...location.state, publicNavigation: true }}
+                className="btn btn-primary"
+              >
                 เลือกดูห้องพัก
                 <ArrowRight className="h-4 w-4" />
-              </a>
-              <a href="#contact" className="btn btn-outline">
+              </Link>
+              <Link
+                to="/#contact"
+                state={{ ...location.state, publicNavigation: true }}
+                className="home-contact-link inline-flex min-h-11 items-center text-sm text-ink underline"
+              >
                 ติดต่อหอพัก
-              </a>
+              </Link>
             </div>
-            <div className="mt-8 flex flex-wrap gap-5 text-xs text-muted">
-              <span className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-brand" />
-                ดูสถานะห้องจากระบบ
-              </span>
-              <span className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-brand" />
-                ส่งคำขอให้ผู้ดูแลตรวจสอบ
-              </span>
-            </div>
-          </div>
-          <div className="relative mx-auto w-full max-w-md">
+          </FadeContent>
+          <FadeContent className="home-brand w-full" delay={0.08}>
             <HeroVisual name={dormitory?.name || 'หอพัก DORMIFY'} />
-            <div className="surface ml-auto mt-4 flex w-fit items-center gap-3 px-5 py-3">
-              <span className="section-icon !h-10 !w-10">
-                <BedDouble className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-xs text-muted">ห้องว่างขณะนี้</p>
-                <p className="font-bold text-navy">
-                  {loading || error || !dormitory ? 'กำลังเตรียมข้อมูล' : `${available.length} ห้อง`}
-                </p>
-              </div>
-            </div>
-          </div>
+          </FadeContent>
         </div>
       </section>
-      <section id="rooms" className="container-page py-14 md:py-20">
+      <section id="rooms" className="container-page py-8 md:py-10">
         <div className="page-heading">
           <div>
-            <p className="eyebrow mb-2">ห้องพักของเรา</p>
-            <h2 className="section-title">พื้นที่เล็ก ๆ ที่เป็นตัวคุณ</h2>
+            <h2 className="section-title">ห้องพักและค่าเช่า</h2>
             <p>
-              {lowestPrice === null
-                ? 'รายละเอียดและราคาห้องพักจะแสดงเมื่อหอพักเผยแพร่ข้อมูล'
-                : `ค่าเช่าเริ่มต้น ${money(lowestPrice)} ต่อเดือน`}
+              {error
+                ? 'โหลดข้อมูลห้องพักไม่ได้ กรุณาลองอีกครั้ง'
+                : loading || !dormitory
+                  ? 'กำลังโหลดห้องพัก…'
+                  : lowestPrice === null
+                    ? 'รายละเอียดและราคาจะแสดงเมื่อหอพักเผยแพร่ข้อมูล'
+                    : `ห้องว่าง ${available.length} ห้อง · ค่าเช่าเริ่มต้น ${money(lowestPrice)} / เดือน`}
             </p>
           </div>
           <div className="relative w-full sm:w-72">
@@ -122,7 +132,10 @@ const Home = () => {
               id="room-search"
               className="field !pl-12"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                rememberSearch(event.target.value, filters);
+              }}
               placeholder="ค้นหาด้วยเลขห้อง…"
             />
           </div>
@@ -140,21 +153,25 @@ const Home = () => {
             />
           </div>
         ) : (
-          <div className="grid items-start gap-6 lg:grid-cols-[260px_1fr]">
+          <div>
             <FilterSidebar
               filters={filters}
-              onChange={setFilters}
+              onChange={(next) => {
+                setFilters(next);
+                rememberSearch(query, next);
+              }}
               onReset={() => {
                 setFilters(initialFilters);
                 setQuery('');
+                rememberSearch('', initialFilters);
               }}
               resultCount={filtered.length}
             />
-            <div>
+            <div className="mt-6">
               {filtered.length ? (
-                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-x-7 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
                   {filtered.map((room) => (
-                    <PropertyCard key={room.id} room={room} />
+                    <PropertyCard key={room.id} room={room} roomSearch={{ query, filters }} />
                   ))}
                 </div>
               ) : (
@@ -170,43 +187,64 @@ const Home = () => {
         )}
       </section>
       <section id="facilities" className="border-y border-line bg-soft">
-        <div className="container-page grid gap-8 py-12 md:grid-cols-2">
+        <div className="container-page grid gap-7 py-9 md:grid-cols-[1fr_1.4fr] md:gap-14">
           <div>
-            <p className="eyebrow mb-2">รู้จักหอพักของเรา</p>
-            <h2 className="section-title">รายละเอียดก่อนตัดสินใจ</h2>
+            <h2 className="section-title">ข้อมูลการอยู่อาศัย</h2>
             <p className="mt-4 text-sm leading-7 text-muted">
               ตรวจสอบข้อมูลห้องพักและกฎการอยู่อาศัย ก่อนส่งคำขอเช่า
               ผู้ดูแลจะติดต่อเพื่อนัดหมายและตกลงรายละเอียดสัญญาภายหลัง
             </p>
           </div>
-          <div className="surface p-6">
+          <div className="facilities-content md:pl-8">
             <h3 className="mb-4 text-lg">สิ่งอำนวยความสะดวก</h3>
             {amenities.length ? (
-              <div className="flex flex-wrap gap-3">
+              <ul className="grid gap-x-5 gap-y-3 sm:grid-cols-2">
                 {amenities.map(({ label, icon: Icon }) => (
-                  <span key={label} className="chip">
-                    <Icon className="h-4 w-4 text-brand" />
+                  <li key={label} className="flex items-center gap-2 text-sm">
+                    <Icon className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
                     {label}
-                  </span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             ) : (
               <p className="text-sm text-muted">ยังไม่มีข้อมูลสิ่งอำนวยความสะดวกเพิ่มเติม</p>
-            )}
-            {dormitory?.rules && (
-              <div className="mt-5 border-t border-line pt-5">
-                <h4 className="mb-2 text-sm">ข้อควรทราบในการอยู่อาศัย</h4>
-                <p className="whitespace-pre-line text-sm text-muted">{dormitory.rules}</p>
-              </div>
             )}
           </div>
         </div>
       </section>
-      <section id="contact" className="container-page py-14">
-        <div className="surface grid gap-8 p-6 md:grid-cols-2 md:p-9">
+      <section
+        id="rules"
+        aria-labelledby="rules-heading"
+        className="container-page border-b border-line py-9 md:py-12"
+      >
+        <div className="grid gap-7 md:grid-cols-[1fr_1.4fr] md:gap-14">
           <div>
-            <p className="eyebrow mb-2">ติดต่อเรา</p>
-            <h2 className="section-title">มีคำถาม? คุยกับเราได้</h2>
+            <h2 id="rules-heading" className="section-title">
+              ข้อกำหนดการอยู่อาศัย
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-muted">
+              อ่านข้อกำหนดของหอพักก่อนส่งคำขอเช่า และสอบถามผู้ดูแลหากต้องการรายละเอียดเพิ่มเติม
+            </p>
+          </div>
+          <div>
+            {loading ? (
+              <p role="status" className="text-sm text-muted">
+                กำลังโหลดข้อกำหนด…
+              </p>
+            ) : error ? (
+              <ErrorMessage message={error} onRetry={refresh} />
+            ) : (
+              <p className="whitespace-pre-line text-sm leading-8 text-ink">
+                {dormitory?.rules || 'ยังไม่ได้ระบุข้อกำหนดเพิ่มเติม กรุณาสอบถามผู้ดูแลก่อนทำสัญญา'}
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+      <section id="contact" className="container-page py-9 md:py-12">
+        <div className="grid gap-7 md:grid-cols-[1fr_1.4fr] md:gap-14">
+          <div>
+            <h2 className="section-title">ติดต่อหอพัก</h2>
             <p className="mt-3 text-sm text-muted">สอบถามห้องพักและรายละเอียดการเข้าอยู่กับผู้ดูแลหอพัก</p>
           </div>
           <div className="space-y-4 text-sm">
@@ -240,7 +278,7 @@ const Home = () => {
           </div>
         </div>
       </section>
-    </>
+    </div>
   );
 };
 export default Home;

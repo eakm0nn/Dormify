@@ -21,12 +21,17 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/properties', require('./routes/roomMediaRoutes'));
 app.use('/api/properties', propertyRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/operations', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 app.use('/api/operations', operationsRoutes);
 app.use('/api/operations', billingRoutes);
 app.use('/api/operations', communityRoutes);
+app.use('/api/operations', require('./routes/historyRoutes'));
+app.use('/api/operations', require('./routes/meterRoutes'));
+app.use('/api/operations', require('./routes/closeoutRoutes'));
+app.use('/api/operations', require('./routes/leaseRevisionRoutes'));
 app.use((error, req, res, next) => {
     if (res.headersSent) return next(error);
     const status = [400, 413, 415].includes(error.status) ? error.status : 500;
@@ -35,6 +40,8 @@ app.use((error, req, res, next) => {
 
 const expiryWorker = setInterval(() => expireReservations().catch(() => console.error('Reservation expiry check failed; check local database availability.')), 60000);
 expiryWorker.unref();
+const billingWorker = setInterval(() => require('./lib/auto-billing').tickBilling().catch(() => console.error('Automatic billing check failed.')), 60000);
+billingWorker.unref();
 
 const server = app.listen(PORT, '127.0.0.1', () => {
     console.log(`Server is running at http://127.0.0.1:${server.address().port}`);

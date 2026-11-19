@@ -9,7 +9,7 @@ const main = async () => {
     try {
         const [server] = await prisma.$queryRaw`SELECT VERSION() AS version, DATABASE() AS name`;
         const counts = {};
-        for (const model of ['user', 'authSession', 'property', 'room', 'booking', 'payment', 'complaint', 'tenantProfile', 'lease', 'leaseOccupant', 'utilityRate', 'meterReading', 'invoice', 'invoiceItem', 'invoicePayment', 'paymentProof', 'invoiceSettlement', 'depositEntry', 'maintenanceRequest', 'expense', 'announcement', 'notification', 'auditLog', 'rentalPolicy']) {
+        for (const model of ['user', 'authSession', 'property', 'room', 'booking', 'payment', 'complaint', 'tenantProfile', 'lease', 'leaseOccupant', 'utilityRate', 'meterReading', 'invoice', 'invoiceItem', 'invoicePayment', 'paymentProof', 'invoiceSettlement', 'depositEntry', 'maintenanceRequest', 'expense', 'announcement', 'notification', 'auditLog', 'rentalPolicy', 'roomPhoto', 'meterChange', 'leaseRevision', 'leaseCloseout', 'invoiceAdjustment', 'dormitoryInstallation']) {
             counts[model] = await prisma[model].count();
         }
         console.log(JSON.stringify({ database: server.name, mysql: server.version, counts }, null, 2));

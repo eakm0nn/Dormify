@@ -4,19 +4,21 @@ const authenticate = require('../middleware/authMiddleware');
 const authorize = require('../middleware/authorize');
 const lockRoom = require('../lib/room-lock');
 const { expireRoom, expireReservations } = require('../lib/reservations');
-const { fail, id, text, date, decimal, choice, audit, notify, leaseAccess, leaseInclude, route } = require('../lib/domain');
+const { fail, id, text, date, decimal, audit, notify, leaseAccess, leaseInclude, route } = require('../lib/domain');
 const router = express.Router();
 router.use(authenticate);
 const admin = authorize('ADMIN');
+const installation = require('../lib/installation');
 
 router.get('/options', admin, route(async (req, res) => {
     await expireReservations();
+    const propertyId = await installation.propertyId();
     const [users, rooms, tenants, leases, bookings] = await Promise.all([
         prisma.user.findMany({ where: { role: 'USER' }, select: { id: true, name: true, email: true }, orderBy: { id: 'desc' } }),
-        prisma.room.findMany({ orderBy: { roomNumber: 'asc' } }),
+        prisma.room.findMany({ where: { propertyId }, orderBy: { roomNumber: 'asc' } }),
         prisma.tenantProfile.findMany({ orderBy: { id: 'desc' } }),
-        prisma.lease.findMany({ include: { tenant: true, room: true }, orderBy: { id: 'desc' } }),
-        prisma.booking.findMany({ where: { status: 'CONFIRMED', lease: null }, include: { room: true, user: { select: { id: true, name: true } } } }),
+        prisma.lease.findMany({ where: { room: { propertyId } }, include: { tenant: true, room: true }, orderBy: { id: 'desc' } }),
+        prisma.booking.findMany({ where: { room: { propertyId }, status: 'CONFIRMED', lease: null }, include: { room: true, user: { select: { id: true, name: true } } } }),
     ]);
     res.json({ users, rooms, tenants, leases, bookings });
 }));
@@ -50,7 +52,7 @@ router.post('/tenants', admin, route(saveTenant));
 router.put('/tenants/:tenantId', admin, route(saveTenant));
 
 router.get('/leases', route(async (req, res) => {
-    const where = req.user.role === 'ADMIN' ? {} : { tenant: { userId: req.user.userId } };
+    const where = { room: { propertyId: await installation.propertyId() }, ...(req.user.role === 'ADMIN' ? {} : { tenant: { userId: req.user.userId } }) };
     res.json(await prisma.lease.findMany({ where, include: leaseInclude, orderBy: { id: 'desc' } }));
 }));
 router.get('/leases/:leaseId', route(async (req, res) => res.json(await leaseAccess(prisma, req.params.leaseId, req.user))));
@@ -67,6 +69,7 @@ const saveLease = async (req, res) => {
         dueDaysSnapshot: policy.dueDays, depositMonthsSnapshot: policy.depositMonths,
         signedDate: body.signedDate ? date(body.signedDate) : null,
     };
+    if (!await installation.ensureRoom(data.roomId)) fail(404, 'ไม่พบห้องพักของหอแห่งนี้');
     if (!Array.isArray(body.occupants) || body.occupants.length > 50) fail(400, 'ข้อมูลผู้พักร่วมไม่ถูกต้อง');
     const occupants = body.occupants.map(person => { if (!person || typeof person !== 'object') fail(400, 'ข้อมูลผู้พักร่วมไม่ถูกต้อง'); return { name: text(person.name, 100), phone: text(person.phone, 30, true) }; });
     const result = await prisma.$transaction(async tx => {
@@ -105,6 +108,10 @@ router.post('/leases/:leaseId/activate', admin, route(async (req, res) => {
         const lease = await leaseAccess(tx, target.id, req.user);
         if (lease.status === 'ACTIVE') return lease;
         if (lease.status !== 'DRAFT' || !lease.signedDate) fail(409, 'ต้องเป็นฉบับร่างที่บันทึกวันลงนามแล้ว');
+        if (lease.previousLeaseId) {
+            const previous = await tx.lease.findUnique({ where: { id: lease.previousLeaseId } });
+            if (previous?.status !== 'ENDED' || !previous.checkoutDate || lease.startDate < previous.checkoutDate) fail(409, 'ต้องปิดยอดสัญญาเดิมก่อนเริ่มสัญญาต่ออายุหรือย้ายห้อง');
+        }
         if (!lease.tenant.userId || (await tx.user.findUnique({ where: { id: lease.tenant.userId } }))?.role !== 'USER') fail(409, 'ผู้เช่าต้องมีบัญชี User ก่อนเริ่มใช้สัญญา');
         const room = await tx.room.findUnique({ where: { id: lease.roomId } });
         if (!room.isActive || await tx.lease.count({ where: { activeRoomId: room.id } })) fail(409, 'ห้องมีสัญญาใช้งานหรือปิดใช้งานอยู่');
@@ -121,20 +128,6 @@ router.post('/leases/:leaseId/activate', admin, route(async (req, res) => {
     });
     res.json(result);
 }));
-router.post('/leases/:leaseId/end', admin, route(async (req, res) => {
-    const target = await leaseAccess(prisma, req.params.leaseId, req.user);
-    res.json(await prisma.$transaction(async tx => {
-        await lockRoom(tx, target.roomId);
-        await tx.$queryRaw`SELECT id FROM Lease WHERE id = ${target.id} FOR UPDATE`;
-        const lease = await leaseAccess(tx, target.id, req.user);
-        if (lease.status === 'ENDED') return lease;
-        if (lease.status !== 'ACTIVE') fail(409, 'จบได้เฉพาะสัญญาที่ใช้งานอยู่');
-        const result = await tx.lease.update({ where: { id: lease.id }, data: { status: 'ENDED', activeRoomId: null, endedAt: new Date() }, include: leaseInclude });
-        if (!await tx.booking.count({ where: { roomId: lease.roomId, status: 'CONFIRMED' } })) await tx.room.update({ where: { id: lease.roomId }, data: { isAvailable: true } });
-        await audit(tx, req.user, 'END_LEASE', 'Lease', lease.id, 'จบสัญญา ไม่คืนเงินประกันให้อัตโนมัติ');
-        await notify(tx, lease.tenant.userId, 'สิ้นสุดสัญญาเช่า', 'สัญญา ' + lease.contractNo + ' สิ้นสุดแล้ว');
-        return result;
-    }));
-}));
+router.post('/leases/:leaseId/end', admin, route(require('./closeoutRoutes').finalizeCloseout));
 
 module.exports = router;

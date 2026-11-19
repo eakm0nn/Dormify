@@ -4,6 +4,8 @@
 เพิ่มรายการใหม่ไว้ด้านบนของส่วนประวัติ ไม่แก้ผลทดสอบเก่าให้ดูเหมือนเพิ่งรัน
 รายการตั้งต้นด้านล่างสรุปย้อนหลังจากงานและผลเครื่องมือในบทสนทนา ไม่ได้รันทดสอบใหม่เพื่อสร้างประวัติ
 
+ตั้งแต่รวมเอกสาร 18 พฤศจิกายน ชื่อไฟล์ Phase/รายงานเก่าที่ปรากฏในข้อความประวัติอาจถูกลบแล้ว ลิงก์ย้ายไปเอกสารหลักตาม [สารบัญ](README.md) ไม่ใช้ข้อความประวัติเก่าเป็นวิธีติดตั้งหรือสถานะฟีเจอร์ปัจจุบัน
+
 ## รูปแบบรายการใหม่
 
 ```text
@@ -17,6 +19,279 @@
 ```
 
 ## ประวัติ
+
+### 2026-11-19 — ใช้ React Bits ใน Hero (Asia/Bangkok)
+
+- คำขอ/ขอบเขต: นำ React Bits มาช่วยงาน UI ต่อจากเมนูข้อกำหนดการอยู่อาศัย รักษาสีขาว–ฟ้า มุมเล็ก โลโก้/GIF และระบบเดิม
+- ทำแล้ว: ตรวจเอกสารและ Source ทางการของ Fade Content แล้วปรับเป็น Component TypeScript แบบ Mount-only ใช้ GSAP 3.15.1; เฟด Hero copy 0.32 วินาที และกรอบ GIF 0.32 วินาทีหลัง Delay 0.08 วินาที เริ่ม Opacity 0.65 เพื่อไม่ซ่อนเนื้อหา ไม่ทำ Blur/Translate/ScrollTrigger ไม่เฟดรายการห้องหรือฟอร์ม ไม่เพิ่ม Asset/ฟีเจอร์หรือเปลี่ยน API ใช้ gsap.matchMedia เพื่อยกเลิก/คืน Style เมื่อเปิด Reduced Motion หรือ Unmount รวม React StrictMode
+- ทิศทางและเหตุผล: ใช้จังหวะสั้นเฉพาะการแนะนำหอพักให้สายตารับข้อความก่อนภาพแบรนด์ ไม่เพิ่มการเคลื่อนไหวในงานเช่า/ชำระเงิน; ENERGY 2 / RHYTHM 2 / MOTION 2 ตามแนวทางเดิม ใช้ antislop โหมด During ที่ผู้ใช้เลือกไว้ในบทสนทนานี้
+- ไฟล์สำคัญ 10 ไฟล์: client/src/components/reactbits/FadeContent.tsx และ LICENSE.md, client/src/pages/Home.tsx, client/package.json, client/package-lock.json, client/test/motion.tsx, client/scripts/ui-smoke.mjs และ docs/{PROJECT_STATUS,WORK_LOG,TEST_RESULTS}.md
+- ตรวจจริง: npm.cmd --prefix client run build (รวม TypeScript), run lint, run format:check, test (5/5) และ node --check client/scripts/ui-smoke.mjs ผ่าน; test:ui รอบสุดท้ายผ่าน Chrome 68 กลุ่ม รวมตรวจ Animation จริงหลัง Browser frame แรก/Keyboard/StrictMode/Unmount และเปิด Reduced Motion ขณะ Hero กำลังเล่น ทดสอบเมนู Back/Forward/Scroll และ Flow เดิมครบชุดใน Suite; แก้ตัวทดสอบไม่ให้ Focus ของ Probe เลื่อนหน้าจอ ตรวจภาพ Desktop/Mobile และ Reduced Motion; ไม่อ้างว่าได้วัด Lighthouse/Core Web Vitals
+- ข้อมูล/Environment/แพ็กเกจ: หยุด Backend ปกติก่อนทดสอบ Fixture แบบ Namespace สุ่มบน MySQL dormify เดียว รัน UI ตามลำดับ ไม่ Reset/Seed/สร้างฐานเพิ่ม Cleanup ตรวจ Hash ข้อมูลเดิมครบ 30 Models ไม่เปลี่ยน ไม่แก้ .env/Schema/Auth/Backend เพิ่ม Runtime dependency gsap แบบตรึงเวอร์ชันใน Client เท่านั้น npm install รายงาน 0 vulnerabilities ในชุด Client ขณะติดตั้ง เก็บ License ต้นฉบับ MIT + Commons Clause ในโฟลเดอร์ Component เครื่องใหม่ npm ci ตามคู่มือเดิม ไม่ต้องติดตั้ง React Bits CLI
+- ก่อนส่ง: check:delivery ผ่าน 150 ไฟล์ข้อความ/3 Lockfiles/Ignore rules, git diff --check ผ่าน, เอกสาร UTF-8 3 ไฟล์/ลิงก์ภายใน 26 จุดผ่าน เปิด npm.cmd start กลับแล้ว Frontend 127.0.0.1:5173 และ Backend Health ที่ 127.0.0.1:5000/ ตอบ HTTP 200 ตรวจ Listener ทั้งสองรับเฉพาะ 127.0.0.1
+- ข้อจำกัด/เริ่มต่อ: ใช้เฉพาะ Fade Content ที่ปรับให้ตรงงานนี้ ยังไม่ได้เพิ่ม React Bits ทั้งชุด; JS หลักจาก Build 403.79 kB / gzip 136.47 kB ไม่ใช่ผลทดสอบความเร็วหน้าเว็บ API suite แยก 50/50 ยังเป็นผลเดิม 18 พฤศจิกายน ไม่รันใหม่เพราะไม่เปลี่ยน Backend หลักฐานล่าสุดอยู่ใน client/.ui-artifacts/react-bits-20261119.log และ results.json (Ignore) ไม่ Commit/Push; ตรวจรับภาพจริงกับผู้ใช้ก่อนเพิ่มเอฟเฟกต์ส่วนอื่น
+
+### 2026-11-19 — เพิ่มเมนูข้อกำหนดการอยู่อาศัย (Asia/Bangkok)
+
+- คำขอ: เพิ่มข้อกำหนดการอยู่อาศัยต่อจากงานเมนูสาธารณะ
+- ทำแล้ว: เพิ่ม Link /#rules ใน Header/Desktop, เมนูมือถือและ Footer แยกส่วนเนื้อหา H2 ข้อกำหนดการอยู่อาศัยออกจากสิ่งอำนวยความสะดวกเพื่อไม่แสดงซ้ำ ใช้ dormitory.rules ที่ Admin บันทึกผ่านข้อมูลหอพักเดิม มี Loading/Error/Empty ที่ไม่แต่งข้อกำหนดขึ้นเอง ใช้ Scroll/History เดิมเพื่อให้กดไป–กลับได้
+- Responsive: เมนูสาธารณะ 5 รายการใช้แนวนอนตั้งแต่ 1280px และเมนูยุบต่ำกว่านั้น เพื่อรองรับข้อความยาว ปรับ Media listener ให้ตรงกับเมนู ส่วน Sidebar Admin/User ยังใช้เกณฑ์ 1024px เดิม
+- ไฟล์สำคัญ: client/src/components/Layout.tsx; client/src/pages/Home.tsx; client/scripts/ui-smoke.mjs; docs/{PROJECT_STATUS,WORK_LOG,TEST_RESULTS}.md รวม 6 ไฟล์ ไม่ทับงานเก่าใน Working Tree
+- ตรวจจริง: npm.cmd --prefix client run build รวม TypeScript, run lint, run format:check, test ผ่าน Unit 5/5; node --check client/scripts/ui-smoke.mjs ผ่าน Browser test:ui นอก Sandbox ผ่าน 66 กลุ่ม (65 เดิม + กรณี Rules ใหม่) ตรวจเนื้อหาจากฐานจริง/Fallback เมื่อ Fixture ไม่มีกฎ, Footer link, จอ 1024/1279/1280/1440px ไม่ล้น พร้อม Header/Mobile/Back/Forward รวม #rules วัดตำแหน่งจริง เปิดดู Screenshot public-desktop.png เห็นเมนูใหม่พอดีกับ Header
+- ข้อมูล/Environment: หยุดเว็บปกติระหว่างรัน Fixture ใน MySQL dormify เดียว เปลี่ยน rules ว่างเฉพาะหอ Fixture แล้วคืนก่อนจบ ไม่แตะข้อกำหนดหอจริง Cleanup ตรวจ Hash ข้อมูลเดิมครบ 30 Models ไม่เปลี่ยน db:check พบ User 3/หอ 1/ห้อง 8/สัญญา 0/บิล 0 และรายการอื่นเดิม ไม่ Reset/Seed/เพิ่มฐาน ไม่เปลี่ยน Backend/Schema/Auth/Dependencies/.env หรือวิธีติดตั้ง ไม่ Commit/Push
+- ปิดงาน/เริ่มต่อ: เปิด npm.cmd start กลับ Session 85139 ที่ Loopback 5173/5000 ดูข้อกำหนดได้ที่ /#rules เนื้อหาแก้ได้ผ่าน Admin ข้อมูลหอพักเดิม ไม่เพิ่มข้อกำหนดหรืออ้างความถูกต้องทางกฎหมายแทนเจ้าของหอ ผลอยู่ใน TEST_RESULTS และ client/.ui-artifacts/rules-navigation-20261119.log/results.json ซึ่ง Ignore
+- ตรวจส่งงาน: Frontend 5173/Backend 5000 ตอบ HTTP 200 จริง; check:delivery ผ่าน 147 ไฟล์ข้อความ/3 Lockfiles/Ignore rules; git diff --check ผ่าน; เอกสาร UTF-8 3 ไฟล์/ลิงก์ภายใน 24 จุดผ่าน
+
+### 2026-11-19 — แก้เมนูสาธารณะกลับแล้วตำแหน่งไม่กลับ (Asia/Bangkok)
+
+- คำขอ: ผู้ใช้ส่งภาพเมนูหน้าหลัก/ห้องพัก/สิ่งอำนวยความสะดวก/ติดต่อเรา กดไปแล้วกลับไม่ได้ ให้แก้กรณีจริง ไม่เปลี่ยน Theme/URL/Backend
+- ทำซ้ำได้: เพิ่ม Browser assertion ให้กด Header ติดต่อ แล้ว Header หน้าหลักและวัด scrollY รอบก่อนแก้ล้มเหลวที่ header Home returns to top ทั้งที่การตรวจเดิมเน้น URL จึงยืนยันว่าผล 62 กลุ่มก่อนหน้าไม่ครอบคลุมตำแหน่งเลื่อนของเมนูนี้
+- ทำแล้ว: ใช้ Router Link ใน Header/Mobile/Footer/Hero ให้ History และ State เป็นรูปแบบเดียว เก็บคำค้นเดิมผ่าน Link และ Brand; เพิ่ม Scroll effect เฉพาะหน้า / รอข้อมูลหอโหลดก่อนเลื่อนไป Hash และเลื่อนขึ้นเมื่อกดหน้าหลัก รวม Back/Forward ภายในส่วนของหน้า ไม่กระโดดเมื่อ Replace เปลี่ยน Filter และไม่แทนที่การคืนตำแหน่งข้ามหน้าที่ไม่มี Hash
+- ตรวจปิดงานจริง: npm.cmd --prefix client run build รวม TypeScript, run lint, run format:check และ test ผ่าน Unit 5/5; node --check client/scripts/ui-smoke.mjs ผ่าน; npm.cmd --prefix client run test:ui นอก Sandbox ผ่าน Chrome 65 กลุ่ม (62 เดิม + Scroll regression ใหม่ 3 กลุ่ม) วัด scrollY/ตำแหน่ง Section จริง มีระยะคลาดเคลื่อนไม่เกิน 4px รวม Desktop/Mobile/กดเมนูเดิมซ้ำ/Back/Forward/Deep link/Filter ไม่กระโดด และชุดเดิมครบ ไม่มี Unexpected browser exception
+- ข้อผิดพลาดระหว่างแก้: หลังแก้ Home click พบ POP/Forward ของหน้าไม่มี Hash ยังพึ่งตำแหน่ง Browser ที่ไม่ตรง จึงจัดตำแหน่งการย้อนส่วนในหน้า / เพิ่ม; พบ Link ไป URL เดิมใช้ REPLACE เหมือนการแก้ Filter จึงใช้ publicNavigation ใน Router state แยกการคลิกเมนูจาก Filter โดยไม่เพิ่ม History entry ซ้ำ; Test helper เดิมรอเอกสารใหม่ทุก Page.navigate ทำให้ Hash ตรงในเอกสารเดิม Timeout จึงตรวจ loaderId และแยก Same-document arrival โดยคง Assertion ตำแหน่งเลื่อนจริงไว้
+- ไฟล์สำคัญ: client/src/components/Layout.tsx, client/src/components/Brand.tsx, client/src/pages/Home.tsx, client/scripts/ui-smoke.mjs และ docs/{PROJECT_STATUS,WORK_LOG,TEST_RESULTS}.md รวม 7 ไฟล์เมื่อปิดบันทึกครบ
+- ข้อมูล/Environment: หยุดเว็บปกติระหว่างทดสอบ ใช้ MySQL dormify เดียว Namespace สุ่ม ทุกรอบที่จบ Cleanup ยืนยันข้อมูลเดิมไม่เปลี่ยน ไม่ Reset/Seed/เพิ่มฐาน ไม่แก้ Backend/Schema/Auth/Dependencies/.env ไม่ Commit/Push
+- ข้อมูลหลังจบ: Cleanup รอบสุดท้ายยืนยัน Hash ข้อมูลเดิมครบ 30 Models ไม่เปลี่ยน db:check พบ User 3/หอ 1/ห้อง 8/สัญญา 0/บิล 0 และรายการอื่นเดิม ภาพ/Log/results.json อยู่ใน client/.ui-artifacts ซึ่ง Ignore ไม่ส่งผลเก่า 62 มาอ้างว่าตรวจ Scroll ใหม่แล้ว
+- ปิดงาน/เริ่มต่อ: เปิด npm.cmd start กลับ Session 83847 ที่ Loopback 5173/5000 หลังทดสอบจบ ให้ผู้ใช้ลองเมนูชุดเดิมได้ ผลรอบใหม่ 65 และ Reproduction ก่อนแก้อยู่ใน TEST_RESULTS/Artifacts ตามขอบเขต ไม่ Commit/Push ไม่มีงาน Backend/Schema หรือเปลี่ยนวิธีติดตั้ง
+- ตรวจส่งงาน: Frontend 5173/Backend 5000 ตอบ HTTP 200 จริง; check:delivery ผ่าน 147 ไฟล์ข้อความ/3 Lockfiles/Ignore rules; git diff --check ผ่าน; เอกสารที่แก้ UTF-8 3 ไฟล์/ลิงก์ภายใน 23 จุดผ่าน
+
+### 2026-11-19 — ตรวจปุ่มและเส้นทางไป–กลับ (Asia/Bangkok)
+
+- คำขอ: ตรวจว่าปุ่ม/ลิงก์ใช้งานและกลับมาที่เดิมได้ โดยคง URL และการเปิดเว็บเดิมตามข้อความก่อนหน้าที่ผู้ใช้ยกเลิกการเปลี่ยนรูปแบบ URL
+- พบและแก้: RoomTable เปิดรายละเอียดห้องแล้ว Back link เดิมชี้ /#rooms เสมอ จึงส่งต้นทาง /admin/rooms และหน้าตารางผ่าน Router state พร้อมตรวจบทบาทก่อนแสดงปลายทาง Admin; ใช้ RoomReturnLink ร่วมทั้งหน้าปกติและ Empty state ของห้องปิด/ไม่พบห้อง; เก็บหน้าตารางใน History state และคืน Filter/คำค้น Home เมื่อ Browser Back/Forward หรือกดปุ่มกลับ ไม่เพิ่ม Query string หรือเปลี่ยนรูปแบบ URL ไม่ใช้ State นี้เป็นสิทธิ์ API
+- ไฟล์โค้ด: client/src/components/{RoomTable,PropertyCard}.tsx; client/src/pages/{Home,PropertyDetails}.tsx; client/scripts/ui-smoke.mjs บวกบันทึก PROJECT_STATUS/WORK_LOG/TEST_RESULTS เมื่อปิดงาน รวม 8 ไฟล์
+- ตรวจปิดงานจริง: TypeScript/Build/Lint/Format และ node --check ผ่าน; npm.cmd --prefix client run test:ui นอก Sandbox ผ่าน Browser 62 กลุ่ม (เดิม 48 + กรณีใหม่ 14) รวม Filter กลับมาครบด้วย Back/Forward/Back link, เมนู 13/9, Cancel ไม่เปลี่ยนข้อมูล, Gallery 2 ภาพ, ดาวน์โหลด PNG จริง, กลับไปหน้าตาราง 2 เดิม และ Empty state ของห้องปิดกลับตาราง Admin เดิม Unit 5/5 ผ่าน; ตรวจ Syntax ของข้อความ CDP evaluate คงที่ 120 จุดด้วย Espree/vm.Script พบ 0 ข้อผิดพลาด ไม่เพิ่ม Library
+- ขอบเขตทดสอบเพิ่ม: เมนู Admin 13/User 9 พร้อม Back/Forward, Login/Register/Password toggle/Anchor, Cancel ของห้อง/หอ/ผู้เช่า/สัญญา/ซ่อม/ข่าวสาร/รายจ่าย, Gallery หลายภาพ/ปิด/Escape, ปิดรายละเอียดบิล/สัญญา, Cancel หน้าต่างรับเงิน, ดาวน์โหลดหลักฐาน และกลับจากห้องไปหน้าตาราง 2 เดิม ใช้ข้อมูล Fixture ใน dormify เดียวและหยุดเว็บปกติระหว่างรัน
+- Environment/ข้อมูล: ไม่แก้ Backend/Schema/Auth/Dependencies/.env ไม่ Reset/Seed/เพิ่มฐาน ใช้ Fixture namespace สุ่ม ก่อนรันทดสอบ db:check พบ User 3/หอ 1/ห้อง 8 และรายการเดิม ไม่ Commit/Push
+- ข้อผิดพลาดระหว่างตรวจ: รอบแรก Test ส่ง Escape ไม่ครบและหยุดที่ room status escape จึงเพิ่ม Page.bringToFront กับ KeyDown/KeyUp และ Virtual key code ใน Helper ของ Test ไม่แก้ Logic หน้าต่างเพื่อหลบ Test แล้วรันใหม่ผ่านครบ ทุกรอบ Cleanup ยืนยันข้อมูลเดิมไม่เปลี่ยน
+- ผลต่อข้อมูล: รอบสุดท้าย Cleanup ตรวจ Hash ข้อมูลเดิมครบ 30 Models ไม่เปลี่ยน db:check หลังจบมี User 3/หอ 1/ห้อง 8/สัญญา 0/บิล 0 และรายการอื่นเดิม ห้อง NAV และภาพ PNG เพิ่มมีเฉพาะ Fixture ของรอบนี้และถูก Cleanup ไม่เพิ่มข้อมูลจริงค้าง
+- ตรวจเพิ่มก่อนส่ง: หลังผ่าน 61 กลุ่มพบ Empty state ห้องปิดยังชี้กลับหน้าสาธารณะ จึงใช้ Back link ร่วมกับหน้าปกติและเพิ่ม Fixture ห้องปิด รันทดสอบใหม่จนผ่าน 62 กลุ่ม โดยหยุดเว็บปกติระหว่างชุดเช่นเดิม ไม่แก้เงื่อนไขเผยแพร่ห้องหรือเพิ่มสิทธิ์
+- ปิดงาน/เริ่มต่อ: ผลใน client/.ui-artifacts/results.json ยืนยัน 62/cleanup verified และ Log navigation-20261119.log ซึ่ง Ignore ไม่เปลี่ยน URL/Schema/สิทธิ์หรือรูปแบบเปิดเว็บ ไม่ Commit/Push การกลับหน้าไม่ย้อนรายการที่ยืนยันบันทึกแล้ว mailto ตรวจลิงก์ใน Source เท่านั้น ไม่ส่งอีเมลจริง ขอบเขตและข้อจำกัดอยู่ใน TEST_RESULTS.md
+- ตรวจส่งงาน: check:delivery ผ่าน 147 ไฟล์ข้อความ/3 Lockfiles/Ignore rules; git diff --check ผ่าน; เอกสาร UTF-8 3 ไฟล์/ลิงก์ภายใน 22 จุดผ่าน เปิด npm.cmd start กลับ Session 46803 และตรวจ Frontend 5173/Backend 5000 ตอบ HTTP 200 จริง
+
+### 2026-11-19 — UI รายละเอียดห้อง Admin/User และตาราง (Asia/Bangkok)
+
+- คำขอ/ขอบเขต: ผู้ใช้สั่งทำตามข้อเสนอทั้ง 5 ส่วนต่อจาก Home ได้แก่รายละเอียดห้อง ภาพรวม Admin เมนูแบ่งหมวด หน้าของ User และตาราง/ฟอร์ม คงขาว–ฟ้า มุมเล็ก ระบบเดิม และใช้ antislop during ตามเดิม
+- ทำแล้ว: รายละเอียดห้องแสดงราคาใกล้ชื่อห้อง Gallery มาก่อนฟอร์ม และฟอร์มมาก่อนรายละเอียดรองบนมือถือ ลดกล่องซ้อน; Admin เน้นคำขอรอตรวจ/บิลค้าง/งานซ่อมจาก API เดิม; Sidebar จัดหมวดแต่รักษา 13 เมนู Admin/9 เมนู User และ Escape คืน Focus; User แสดงห้องตามสัญญาที่ ACTIVE คำขอล่าสุด และบิล ISSUED ที่ครบกำหนดก่อน เมื่อวันเท่ากันแสดง ID เก่าก่อน โดยไม่คำนวณยอดใหม่; ตารางเงินชิดขวาและเลื่อนด้วย Keyboard ได้ ฟอร์มใช้ส่วนหัวและแถบปุ่มสม่ำเสมอ
+- API/สิทธิ์: Profile อ่าน /api/operations/leases, /api/bookings/my-bookings และ /api/operations/invoices เพื่อแสดงข้อมูลใหม่ในหน้าเดิม ใช้ Hook/API ที่จำกัดข้อมูลตามบัญชีเดิม ไม่เพิ่ม Endpoint/Role/Schema หรือการแก้ข้อมูลส่วนตัว
+- ไฟล์สำคัญ: client/src/pages/{PropertyDetails,AdminOverview,Profile,MyBookings,Invoices,Payments,Leases,Reports}.tsx; client/src/components/{PropertyGallery,Layout,OperationUI,RoomTable}.tsx; client/src/config/navigation.ts; client/src/index.css; client/scripts/ui-smoke.mjs; docs/{PROJECT_STATUS,WORK_LOG,TEST_RESULTS}.md รวม 18 ไฟล์เมื่อปิดบันทึกครบ
+- ผลตรวจปิดงานจริง: npm.cmd --prefix client run build รวม TypeScript, run lint, run format:check และ test ผ่าน Unit 5/5; node --check client/scripts/ui-smoke.mjs ผ่าน; npm.cmd --prefix client run test:ui นอก Sandbox ผ่าน Chrome 48 กลุ่ม รวมการโหลด/ล้มเหลว/Retry/Empty ของ User, เมนูครบ/Escape คืน Focus, ลำดับราคา/ฟอร์มที่ 320/390/768/1440px, สัญญา/บิลจริงของ User, เงินชิดขวา/Keyboard scroll และ Flow เดิมครบถึงปิดสัญญา/คืนเงิน/แจ้งซ่อม Cleanup ยืนยัน Hash ข้อมูลเดิมครบ 30 Models ไม่เปลี่ยน ไม่รัน API suite แยกซ้ำ; 50/50 เป็นผลเดิมวันที่ 18 ไม่ใช่ผลใหม่ของงานนี้
+- ข้อผิดพลาดที่แก้: Test ดัก Network เจอ InterceptionId ของ Request ที่ React ยกเลิกแล้ว จึงเลือก Request ที่ยังใช้ได้ใน Test โดยไม่เปลี่ยน Logic ให้หลบการทดสอบ; Test บิลเปิดเผยว่าบิล 2 ใบออกวันเดียวกันมี Due date เท่ากัน จึงเพิ่ม ID เก่าเป็นลำดับรองของการแสดงผล Profile
+- Environment: หลังข้อความทำต่อพบ Docker Desktop หยุดและ Tool session เดิมหาย จึงเปิด Docker แบบ Hidden กลับมา ใช้ Container/Volume dormify_mysql_data เดิม ไม่ Reset/Seed; db:check หลังเริ่มใหม่พบจำนวนเดิม User 3/หอ 1/ห้อง 8/สัญญา 0/บิล 0 และรายการอื่นเดิม ไม่มี Fixture ค้างจากชุดก่อน เซิร์ฟเวอร์เว็บปกติยังหยุดอยู่ระหว่างทดสอบ ไม่มี Fixture สองชุดพร้อมกัน
+- ตรวจภาพ/สี: เปิดดู room-detail-390/1440, admin-desktop, resident-overview-390/1440 และ invoice-table-mobile จริง ภาพอยู่ใน client/.ui-artifacts ซึ่ง Ignore คำนวณสีใหม่/สีที่ใช้บน Stripe/Soft/White 5 คู่ได้ 4.58–15.59 ต่อ 1 ผ่าน 4.5 ทั้งหมด รายการ Gate แบบจำกัดขอบเขตอยู่ใน TEST_RESULTS.md
+- สถานะปิดงาน/เริ่มต่อ: งาน 5 ส่วนเสร็จตามขอบเขต เปิด npm.cmd start กลับ Session 59889 ที่ Loopback 5173/5000 แล้ว ให้ผู้ใช้ตรวจ UI จริงก่อนขยายงานเพิ่ม ไม่ Commit/Push ไม่มีการเปลี่ยน Backend/Schema/Dependencies/.env หรือวิธีติดตั้ง ยังไม่มีการแก้ข้อมูลส่วนตัวเช่นเดิม และหน้าสรุปแสดงบิลที่ครบกำหนดก่อนหนึ่งใบ ไม่ใช่ยอดรวมทุกบิล
+- ตรวจส่งงาน: Frontend 5173/Backend 5000 ตอบ HTTP 200 จริง; อ่าน results.json ยืนยัน 48 กลุ่มและ Fixture cleanup verified; check:delivery ผ่าน 147 ไฟล์ข้อความ/3 Lockfiles/Ignore rules; git diff --check ผ่าน; เอกสารที่แก้ UTF-8 3 ไฟล์/ลิงก์ภายใน 21 จุดผ่าน
+
+### 2026-11-19 — ปรับ Home และลดมุมโค้ง (Asia/Bangkok)
+
+- คำขอ/ขอบเขต: ผู้ใช้อนุมัติแนวทางปรับ Home ก่อนเพื่อลดความรู้สึกเว็บสำเร็จรูป และขอให้ลดมุมโค้ง ใช้ antislop โหมด during ตามที่เลือกไว้ คงสีขาว–ฟ้า หัวข้อหลัก โลโก้ กรอบ GIF และระบบเดิม
+- ทำแล้ว/เหตุผล: ลด Hero เพื่อให้เห็นราคาห้องเร็ว ย้ายสรุปห้องว่าง/ค่าเช่าไปหัวข้อห้อง วางราคาใกล้เลขห้อง รูปห้อง 16:10 และไม่มีกรอบครอบข้อความซ้อน จัดตัวกรองเป็นแถบ เปิด/ยุบได้บนมือถือ มี aria-expanded/aria-controls และกด Enter ได้ ลด Surface/Dialog เป็น 8px, Controls 6px, Badge 4px; มุมที่ Component กำหนดแยกยังคงอยู่ เก็บ Empty/Loading/Error และไม่มีข้อมูล/ภาพสมมติใหม่
+- ไฟล์สำคัญ: client/src/pages/Home.tsx; client/src/components/{HeroVisual,PropertyCard,FilterSidebar}.tsx; client/src/index.css; client/scripts/ui-smoke.mjs; docs/{PROJECT_STATUS,WORK_LOG,TEST_RESULTS}.md รวม 9 ไฟล์ ไม่ทับหรือย้อนงานเก่าที่อยู่ใน Working Tree
+- ตรวจจริง: npm.cmd --prefix client run build รวม TypeScript ผ่านหลังปรับสุดท้าย, run lint และ run format:check ผ่าน; Unit 5/5; node --check client/scripts/ui-smoke.mjs ผ่าน คำนวณ Contrast ของคู่สีที่ใช้จริง 6 คู่ได้ 4.52–16.42 ต่อ 1 ผ่าน 4.5 ทั้งหมด เปิดดู Screenshot Desktop/390/768px จริง
+- Browser: npm.cmd --prefix client run test:ui นอก Sandbox ผ่าน 43 กลุ่ม รวม Enter เปิดตัวกรอง/กรองงบ/ล้างค่า ตรวจราคาห้องในจอแรก 1440×1000 และไม่มี Overflow ที่ 320/390/768/1024px รวม Flow เดิมเช่า/สัญญา/บิล/น้ำไฟ/เงินประกัน/คืนเงิน/ซ่อม/ข่าวสาร รันทีละชุดใน dormify เดียวและ Cleanup ตรวจ Hash ข้อมูลเดิมครบ 30 Models ไม่เปลี่ยน ไม่รัน API suite แยกซ้ำเพราะไม่เปลี่ยน Backend/API; 50/50 ยังคงเป็นหลักฐานของวันที่ 18 ไม่ใช่ผลใหม่ของงานนี้
+- ปัญหาระหว่างตรวจ: Enter ใน Test รอบแรกไม่เปิดตัวกรอง จึงปรับ Test ให้ Page.bringToFront และส่ง Enter text ครบแล้วผ่านโดยไม่เปลี่ยน Logic ปุ่มเพื่อหลบข้อผิดพลาด ภาพ Desktop รอบแรกเห็นราคาช้า จึงลดความสูง Hero/ตัวกรองและตรวจจนราคาอยู่ในจอแรก พบ Server ปกติเปิดค้างเพราะการเช็กพอร์ตใน Sandbox ไม่แสดงผล จึงตรวจนอก Sandbox หยุด Process ที่ยืนยันว่าเป็น DORMIFY; Stop-Process ของ PowerShell ไม่สำเร็จ ใช้ taskkill เฉพาะ PID เดิมและตรวจยืนยันพอร์ต 5000/5173 ว่าง จากนั้นรัน Browser ชุดสุดท้ายใหม่จนครบ 43 และ Cleanup ผ่าน ไม่มี Fixture suites ซ้อนกัน
+- ข้อมูล/Environment/แพ็กเกจ: ไม่เปลี่ยน Backend/Schema/API/Auth/.env/แพ็กเกจ ไม่ Reset/Seed/สร้างฐานเพิ่ม ใช้ข้อมูลทดสอบ Namespace สุ่มใน MySQL dormify ฐานเดิม ภาพ Fixture และ results.json อยู่ใน client/.ui-artifacts ซึ่ง Ignore; ไม่มีวิธีติดตั้งใหม่ ไม่ Commit/Push
+- สถานะรัน: หลังทดสอบชุดสุดท้ายเปิด npm.cmd start กลับ Session 46674 ที่ Loopback Frontend 5173/Backend 5000 ก่อนหน้าเคยเปิดซ้ำแล้วพบ Port in use และ Backend callback อ้าง null address เก็บเป็นข้อค้นพบ ไม่แก้ Backend ในงาน UI นี้ คำเตือน util._extend ของ concurrently เดิมยังมีแต่เริ่มระบบได้
+- ตรวจส่งงาน: Frontend http://127.0.0.1:5173/ และ Backend http://127.0.0.1:5000/ ตอบ HTTP 200 จริง; npm.cmd run check:delivery ผ่าน 147 ไฟล์ข้อความ/3 Lockfiles/Ignore rules; git diff --check ผ่าน; เอกสารที่แก้ 3 ไฟล์เป็น UTF-8 และลิงก์ภายใน 20 จุดผ่าน
+- งานค้าง/เริ่มต่อ: ให้ผู้ใช้ดู Home จริงก่อนขยายการออกแบบไป Admin/User อย่าอ้างว่าทั้งเว็บออกแบบใหม่ครบทุกหน้า หากจะจัดการ Startup error ให้ทำเป็นงานแยก ส่วนงาน Audit W7–W9/S1–S7 ยังไม่ได้รับการทำทั้งหมด ดูผลและ Delivery Gate แบบจำกัดขอบเขตใน TEST_RESULTS.md
+
+### 2026-11-18 — เก็บกวาด Code Audit ชุด W1–W6 (Asia/Bangkok)
+
+- คำขอ/ขอบเขต: ผู้ใช้สั่งเริ่มหลังรายงาน Audit จึงทำเฉพาะชุดที่แนะนำ W1–W6 รักษาฟังก์ชันและข้อมูลเดิม งานลดตารางยังพักไว้ตามคำสั่งก่อนหน้า
+- ทำแล้ว: ลบ randomUUID และ bangkokToday ที่ไม่ถูกเรียกใน billingRoutes; ลบ Import Prisma ใน meterRoutes และ choice ใน operationsRoutes; ถอน devDependency eslint-plugin-react-refresh ด้วย npm แบบ Offline พร้อมปรับ Lockfile โดย react-refresh ของ Vite ยังอยู่; เพิ่ม enabled ให้ useHistoryResource โดยค่าเริ่มต้นเดิมยังทำงาน; หน้า Admin ข่าวสารไม่โหลดประวัติแจ้งเตือนที่ซ่อน; หน้าประวัติชำระเงินโหลด Payments โดยไม่โหลด Invoices/Leases/Deposits ที่ไม่ได้แสดง หน้าชำระเงินจริงยังโหลดครบ
+- ไฟล์สำคัญ: server/src/routes/{billingRoutes,meterRoutes,operationsRoutes}.js; client/src/hooks/useHistoryResource.ts; client/src/pages/{News,Payments}.tsx; client/package.json; client/package-lock.json; client/scripts/ui-smoke.mjs; docs/{PROJECT_STATUS,WORK_LOG,TEST_RESULTS}.md รวม 12 ไฟล์ของรอบนี้ มีงานเดิมที่ยังไม่ Commit อยู่ก่อนแล้ว ไม่ทับหรือย้อนงานเหล่านั้น
+- ตรวจจริง: npm.cmd --prefix client run build (รวม TypeScript), run lint, run format:check และ test ผ่าน Unit 5/5; node --check ผ่าน 4 ไฟล์ JS ที่แก้; ESLint Linter ตรวจ Unused/Unreachable ใน Backend 3 ไฟล์พบ 0; npm.cmd --prefix client ls eslint-plugin-react-refresh react-refresh --depth=2 ยืนยันเหลือ react-refresh ของ @vitejs/plugin-react; npm.cmd --prefix server run db:check เชื่อม MySQL dormify 8.4.13 ได้
+- ทดสอบฐาน/API/UI ตามลำดับ: npm.cmd --prefix server test ผ่าน 50/50 พร้อม Cleanup ยืนยันข้อมูลเดิม; npm.cmd --prefix client run test:ui รอบแรกใน Sandbox หยุดที่ DevTools timeout: Page.enable ก่อนตรวจหน้าเว็บ โดย Cleanup ผ่าน จากนั้นรันคำสั่งเดิมนอก Sandbox ผ่าน Chrome 40 กลุ่ม รวมตรวจ Network จริงว่าหน้าข่าวสาร Admin ไม่เรียก Notification history, User ยังโหลด Notification history, หน้าประวัติชำระเงินไม่โหลด API 3 ตัวที่ซ่อน และหน้าชำระเงินจริงยังเรียก 4 API ครบ
+- ข้อมูล/Environment/แพ็กเกจ: ใช้ฐาน dormify เดียว Fixture namespace สุ่ม ไม่ Reset/Seed/เพิ่มฐาน; Cleanup ตรวจ Hash ข้อมูลเดิมครบ 30 Models ไม่เปลี่ยน ไม่แก้ Schema/Endpoint/Authentication/.env ถอนแพ็กเกจพัฒนา 1 ตัว เครื่องใหม่ใช้ npm ci ตาม Lockfile เดิม ไม่มีขั้นตอนติดตั้งใหม่ ไม่ Commit/Push ไม่เปิด Public Internet
+- งานค้าง/เริ่มต่อ: W7–W9 เรื่อง CSS และ PropertyCard กับข้อเสนอ S1–S7 ยังไม่ทำ ไม่ยกเลิก Endpoint เก่า/ตาราง Legacy หากทำต่อให้ตรวจความสัมพันธ์และผลกระทบตาม Audit ก่อน รายการและผลรอบนี้อยู่ใน TEST_RESULTS.md
+- ตรวจส่งงาน: npm.cmd run check:delivery ผ่าน 147 ไฟล์ข้อความ/3 Lockfiles/Ignore rules; เอกสารที่แก้ 3 ไฟล์เป็น UTF-8 และลิงก์ภายใน 19 จุดผ่าน; git diff --check ผ่าน มีเฉพาะคำเตือน LF/CRLF ของ Working Tree เดิม
+
+### 2026-11-18: เอาปุ่มหัวใจและแชร์ออกตามคำสั่ง
+
+- คำขอ: เอาปุ่มที่แนะนำว่าไม่จำเป็นต่อขอบเขต คือหัวใจและแชร์ ออกจากหน้ารายละเอียดห้อง
+- ทำแล้ว: ลบปุ่มสองตัว Import Heart/Share2, State saved/shareMessage, ฟังก์ชันแชร์/Clipboard และข้อความผลแชร์ที่ไม่มีผู้ใช้แล้วจาก client/src/pages/PropertyDetails.tsx เก็บปุ่มกลับ ฟอร์มขอเช่า Gallery และส่วนอื่น
+- ตรวจจริง: Build รวม TypeScript, Lint และ Format ผ่าน; ค้นโค้ดยืนยันไม่เหลือ Import/Handler/State ของสองปุ่ม ไม่รัน API/UI suite ซ้ำสำหรับการลบส่วนเสริมนี้ ไม่อ้างว่าเพิ่งผ่าน Browser39จากรอบก่อน
+- ข้อมูล/Environment: ไม่แก้ API/Schema/Dependencies/.env หรือฐานข้อมูล ไม่ Commit/Push; antislop Gate ของส่วนที่ลบผ่านจากการตรวจ Source/Build ไม่มี Control ใหม่หรือเนื้อหาจำลองเพิ่ม
+- เริ่มต่อ: รีเฟรชหน้ารายละเอียดห้องเพื่อดูหน้าใหม่ ถ้าต้องเก็บกวาดเพิ่มให้ยึดรายการที่ผู้ใช้สั่ง ไม่ลบปุ่มเช่า/การเงิน/ซ่อม
+
+### 2026-11-18: ปรับ UI ใหม่ตามคำสั่งด้วยทั้ง 6 Skills
+
+- คำขอ: ปรับ UI ใหม่ ใช้ antislop ทั้งหก โดยรักษาสีและระบบเดิม หัวข้อหลัก/ชื่อหอ/โลโก้/GIF ไม่เปลี่ยน
+- Direction: ENERGY2/RHYTHM2/MOTION2 ตามอัตลักษณ์เดิม จัดพื้นที่ตามงานจริง ไม่สร้าง Assets/ฟีเจอร์หรือ DESIGN.md
+- ทำแล้ว: Home ลดกริด/Glow ใช้พื้น Soft เดิม Hero hierarchy ใหม่ H2 ตรงเนื้อหา Cards รูป4:3/ลดข้อมูลประเภทซ้ำ Sidebar Soft/Active ชัด Metrics เป็นแถวร่วม Auth panel แยกจุดสนใจ; Copywriting ตรวจข้อความใหม่ไม่เพิ่มข้อเท็จจริง; Code skill ย่อเฉพาะคอมเมนต์ชื่อไฟล์เดิมใน PropertyCard ไม่ใช่รีแฟกเตอร์ Logic
+- ไฟล์หลัก: client/src/pages/Home.tsx, AdminOverview.tsx, components/PropertyCard.tsx, Layout.tsx, AuthFrame.tsx, HeroVisual.tsx, index.css; เหตุผล/Gate/ขอบเขตทั้ง6อยู่ใน docs/TEST_RESULTS.md
+- ตรวจจริง: npm.cmd --prefix client run build (รวม TypeScript), lint, format:check ผ่าน Chrome test:ui 39 กลุ่มผ่าน ไม่มี Unexpected exceptions Cleanup ยืนยันข้อมูลเดิมไม่เปลี่ยน; ดูภาพ Fixture Public Desktop/Mobile และ Admin Desktop ด้วยตาแล้ว Contrast Primary/Soft4.60 และ Muted/Soft4.52 ผ่าน
+- ไม่รัน API suite/Unit ซ้ำ ไม่มี Backend/Schema/API/Dependencies/.env เปลี่ยน หยุดเว็บก่อน UI test ใช้ dormify เดียว ไม่ Reset/Seed ไม่เพิ่มฐาน ไม่ Commit/Push
+- งานต่อ: ให้ผู้ใช้ดูหน้าใหม่ ไม่อ้างคะแนน Lighthouse หรือการตรวจรับครู/เครื่องอื่นที่ไม่ได้ทำ กลไกเช่าและข้อมูลหอเดิมยังอยู่
+
+### 2026-11-18: ใช้ antislop during ปรับเฉพาะ CSS ตามขอบเขตล่าสุด
+
+- คำขอ: แก้แค่ UI ไม่เพิ่มอะไร ใช้ Skills ที่ติดตั้ง คงข้อความ/หัวข้อ/สี/โลโก้/GIF เดิม หลังผู้ใช้ให้คืนหน้ารอบก่อน
+- ทำแล้ว: แก้ไฟล์แอปเพียง client/src/index.css ลดเงา ขอบควบคุมชัดขึ้นด้วย Muted เดิม เมนู 44px Pointer/Active/Disabled states หัวตาราง/ตัวเลข/ตัดคำ ฟอนต์ Field มือถือ 16px และ Dialog เลื่อนภายในจอ ไม่เพิ่มฟีเจอร์ Component Asset หรือ DESIGN.md
+- ใช้ antislop/antislop-ui/antislop-human/antislop-layoutmobile ในโหมด during ตาม Session choice ไม่บันทึกโหมด Global; ทิศทางจากคำสั่งสีและหน้าตาเดิม ENERGY2/RHYTHM1/MOTION2 เหตุผลและ Gate เฉพาะขอบเขต CSS อยู่ใน docs/TEST_RESULTS.md
+- ตรวจจริง: npm.cmd --prefix client run build รวม TypeScript ผ่าน Lint/Format ผ่าน; Chrome test:ui ผ่าน39กลุ่ม ไม่มี Unexpected exceptions และ Fixture cleanup ข้อมูลเดิมไม่เปลี่ยน; ไม่รัน API suite/Unit ซ้ำ
+- Contrast จากสคริปต์สกิล: Muted/White4.76, Muted/Soft4.52, Primary/White4.84, Primary/Soft4.60, Text/Soft14.17 ผ่านเกณฑ์ข้อความปกติและขอบควบคุมที่แก้
+- รักษางานเดิม: Hash109ไฟล์ที่ครอบคลุม client/src ยกเว้น CSS รวม Asset/ข้อความ, Client scripts, Backend src, Schema/Migrations และ Manifest/Lockfile ตรงก่อน–หลัง ไม่มีการเปลี่ยนชื่อหอหรือข้อมูลจริง
+- Environment: หยุดเว็บก่อน UI test รัน Fixture บน MySQL dormify เดียว ไม่ Reset/Seed หรือเพิ่มฐาน ไม่เปลี่ยน Dependencies/.env ไม่ Commit/Push
+- เริ่มต่อ: ให้ผู้ใช้ดูการปรับสไตล์เดิม รายงานนี้ไม่ใช่ Accessibility audit ครบทุกหน้า ไม่อ้างคะแนน Lighthouse/Web Vitals ที่ไม่ได้วัด
+
+### 2026-11-18: คืนหน้าเว็บก่อนปรับด้วย antislop ตามคำสั่ง
+
+- คำขอ: ผู้ใช้เลือก during แล้วเห็นชื่อหอจากข้อมูลเดิมขึ้นเป็นหัวข้อหลัก จึงสั่งให้แก้กลับแบบเดิมทันที
+- ทำแล้ว: ย้อนเฉพาะการแก้ Home.tsx/HeroVisual.tsx ในงาน antislop ที่เพิ่งทำ คืนหัวข้อ ห้องที่ใช่/สำหรับทุกวันของคุณ ลายพื้นหลัง คำอธิบาย และกรอบ GIF เดิม ลบ DESIGN.md ที่เพิ่งสร้างในงานนั้น
+- รักษางานก่อนหน้า: ส่วนอาหาร/รีวิวที่ผู้ใช้สั่งถอดยังถอดอยู่ สิ่งอำนวยความสะดวกจริงและระบบเช่าก่อนเริ่ม antislop ยังอยู่ ไม่ใช้ git reset/checkout ทับ Working Tree เดิม ไม่แก้ชื่อหอหรือข้อมูลในฐาน
+- ตรวจจริง: npm.cmd --prefix client run build ผ่าน รวม TypeScript; git diff ของ HeroVisual ว่าง Home เหลือเฉพาะงานก่อนหน้าเรื่องอาหาร/สิ่งอำนวยความสะดวก ไม่รัน API/UI suite ซ้ำสำหรับการคืนส่วนแสดงผล
+- Environment/ข้อมูล: ไม่เปลี่ยน Backend/Schema/Dependencies/.env/ฐาน Skills ยังติดตั้ง แต่ไม่มีการเปลี่ยนหน้าตาจากรอบ antislop เหลืออยู่ ไม่ Commit/Push
+- เริ่มต่อ: คงหน้าตาเดิมตามคำสั่งล่าสุด หากจะปรับดีไซน์อีกให้ยึดคำขอใหม่และสีเดิม ไม่ใช้สกิลเป็นเหตุให้เปลี่ยนหัวข้อหรืออัตลักษณ์เอง
+
+### 2026-11-18 — ติดตั้ง anti-slop สำหรับ Codex บนเครื่องนี้ (Asia/Bangkok)
+
+- คำขอ: ติดตั้งจาก https://github.com/miqdadbadjuber/anti-slop
+- ทำแล้ว: ใช้ skill-installer ของ Codex ติดตั้งในโฟลเดอร์ skills ระดับผู้ใช้ ไม่เพิ่ม npm dependency หรือเปลี่ยน UI/กติกาของ DORMIFY
+- ติดตั้งครบ 6 skills: antislop, antislop-ui, antislop-code, antislop-copywriting, antislop-human, antislop-layoutmobile; VERSION ของ Core เป็น 3.2.31
+- ตรวจจริง: install-skill-from-github.py จบ exit 0 ตรวจพบ SKILL.md ครบทั้งหกและไฟล์ประกอบติดตั้ง ไม่รัน Build/API/UI เพราะไม่แก้โค้ดแอป ไม่อ้างว่าทบทวนดีไซน์ด้วย anti-slop แล้ว
+- ผลต่อ Environment: เป็นการติดตั้ง Codex เฉพาะเครื่อง ไม่ตาม Git ไปเครื่องอื่น ไม่แก้ AGENTS.md หรือบังคับโหมด during/after แทนผู้ใช้; พร้อมให้เรียกใช้ในข้อความถัดไปตามกลไก Skills ของ Codex
+- จุดเริ่มต่อ: หากต้องการใช้ตรวจ/แก้ UI ค่อยเลือกโหมดและขอบเขตในงานนั้น ไม่เปลี่ยนธีมเองจากคำสั่งติดตั้ง งานโปรเจกต์ยังไม่ Commit/Push
+
+### 2026-11-18 — รวมและลดเอกสาร docs ตามคำสั่ง (Asia/Bangkok)
+
+- คำขอ: เอาเอกสารไม่จำเป็นออกหรือสรุปรวม ลดไฟล์ซ้ำและสถานะเก่าที่ขัดกับระบบปัจจุบัน
+- ทำแล้ว: เอกสาร Markdown เดิม 30 ฉบับเหลือ 12 ฉบับ เพิ่ม README เป็นสารบัญ, TEST_RESULTS รวมผลล่าสุด/ประวัติ, DEVELOPMENT รวม Stack/Prisma/แบบข้อมูล/ข้อจำกัด ลบรายงานเดิม 21 ฉบับหลังสรุป ไม่ทำ ZIP/สำเนาสำรอง
+- รวม Phase0 setup/Auth/phpMyAdmin/GitHub ใน SETUP_NEW_MACHINE; รวมคู่มือเทคนิค/แผนออกแบบ/ย้ายฐานใน DEVELOPMENT; วิธีใช้งานห้องและงานบริหารอยู่ใน ADMIN_MANUAL/USER_MANUAL; ผล Phase/Deep/Completion/Submission review อยู่ใน TEST_RESULTS
+- ปรับ PROJECT_STATUS ให้เป็นสถานะปัจจุบันหน้าเดียว ย้ายความหมายของสถานะเก่าไป WORK_LOG/TEST_RESULTS; ตารางข้อกำหนดเหลือ 25 ข้อฉบับปัจจุบันพร้อมขอบเขตหลักฐาน; แก้หัวข้อข้อความถอด PDF ที่แสดงเป็นเครื่องหมายคำถาม ไม่แก้ข้อความ Glyph/ไฟล์ PDF ต้นฉบับ
+- รักษา WORK_LOG ประวัติเดิม กติกา 14 ข้อและคำยืนยันล่าสุด คู่มือ Admin/User/ตรวจรับ PDF และรูป Fixture; อัปเดตลิงก์ README/เอกสารที่ยังอยู่ให้ไปปลายทางใหม่ ชื่อไฟล์เก่าในข้อความย้อนหลังเก็บเพื่ออธิบายประวัติ ไม่ใช่ลิงก์เสีย
+- ตรวจรอบนี้: ตรวจลิงก์/ความสอดคล้อง/คำสั่งในคู่มือกับ package.json และ Compose แบบอ่านอย่างเดียว ไม่รันทดสอบแอปซ้ำ ผล API50/Browser39/Unit5 เป็นผลรอบพัฒนาก่อนหน้า ไม่ใช่ผลใหม่จากการรวมเอกสาร
+- ผลตรวจจริงหลังรวม: ลิงก์ภายใน README/AGENTS/docs 73 จุดปลายทางมีอยู่ทั้งหมด UTF-8 ไม่มี Replacement character; PDF SHA-256 เดิมไม่เปลี่ยน; ตรวจ Schema แบบอ่านพบ 30 Models/7 Migrations ตามคู่มือ; check:delivery ผ่าน 147 text files/3 Lockfiles; git diff --check ผ่าน ไม่มีลิงก์ Markdown ไปเอกสารที่ลบ
+- ข้อมูล/Environment: ไม่แตะโค้ดแอป แพ็กเกจ Schema/Migration .env ฐานหรือสำรองเก่า ไม่ Commit/Push
+- จุดเริ่มต่อ: อ่าน docs/README.md → PROJECT_STATUS/WORK_LOG/BUSINESS_RULES; ยังต้องส่งงานล่าสุดตามคำสั่งและตรวจเครื่องอื่น/ครู/เจ้าของหอจริงก่อนรับรองพร้อมส่ง
+
+### 2026-11-18 — ตรวจไฟล์ที่ไม่ใช้และส่วนที่ไม่จำเป็นต่อ Runtime (Asia/Bangkok)
+
+- คำขอ: ระบุไฟล์ไม่จำเป็น/ไม่ได้ใช้ ยังไม่สั่งลบ
+- ตรวจ Git/รายการไฟล์/relative import graph จาก client/src/main.tsx และ server/src/index.js พบ Runtime source ทุกไฟล์เข้าถึงได้ ยกเว้น .d.ts สองไฟล์ที่ TypeScript ใช้ ไม่ใช่ไฟล์เหลือ; Logo/GIF/Font มีอ้างอิงจริง
+- ลบแล้วสร้างใหม่ได้: client/dist, client/.ui-artifacts และ node_modules สามตำแหน่ง (ต้อง npm ci ใหม่จึงรันได้); root .ui-artifacts ว่าง ไม่ใช่ Source
+- ใช้เฉพาะงานเสริม: add-demo-rooms.js รันด้วยมือและมีบันทึกอ้างถึง ไม่ถูกเรียกตอน Start; docs วิเคราะห์/Phase/ผลทดสอบเป็นประวัติและมีลิงก์ ไม่ใช่ไฟล์ Runtime ที่สูญเปล่า; test/scripts ใช้ตรวจส่งงาน
+- สิ่งที่ห้ามเหมารวมลบ: .env ใช้จริง; .env.example เป็นแบบอ้างอิง; server/.env.before-mysql-20261114 กับ server/prisma/backups เป็นสำรองเก่าต้องตรวจความจำเป็นแยก; Migration/Lockfile/Schema และไฟล์ตั้งค่าใช้ติดตั้ง/Build
+- ตรวจแบบอ่านอย่างเดียว ไม่แก้โค้ด/ลบไฟล์/รันทดสอบแอปใหม่ ไม่เปิดเนื้อหา Secret/ข้อมูลสำรอง บันทึกข้อค้นพบใน WORK_LOG/PROJECT_STATUS
+
+### 2026-11-18 — เตรียมส่งห้าส่วนและปิดน้ำไฟตามหลักฐาน (Asia/Bangkok)
+
+- คำขอ: ทำงานก่อนส่งห้าส่วน ผู้ใช้ยืนยัน Admin ระบุยอดปรับน้ำไฟจริงพร้อมหลักฐาน ไม่เฉลี่ยตามวันเหมือนค่าเช่า
+- ทำแล้ว: Preview บอกใบปรับที่ต้องจัดสรร ฟอร์มเหตุผล/หลักฐาน/ยอดจริง ตรวจเพดานต่อใบและประเภทค่าใช้จ่าย ปิดยอดคำนวณใหม่ภายใต้ Lock เก็บ original/applied/reason/reference ใน details และบังคับ expectedBalance เมื่อมีการจัดสรร
+- ไฟล์หลัก: closeoutRoutes.js, CloseoutTools.tsx, OperationUI.tsx, operations.test.js, ui-smoke.mjs, scripts/check-delivery.js, package.json, .gitignore; เพิ่ม ADMIN_MANUAL/USER_MANUAL/SUBMISSION_CHECKLIST/SUBMISSION_REVIEW_20261118 และอัปเดตคู่มือ/สถานะ/กติกา/README/RTM
+- เทียบ PDF: SHA-256 3a86bc087da45df777f57bc34bb5215cfa191f09c0d6d3f850bcbfeac066ddd5 ตรงข้อความถอดและรายการ Admin13/User12 ไม่เพิ่มฟีเจอร์นอกขอบเขต; ไม่แต่งผลประเมินหรือรูปเล่มที่ต้องใช้แบบของวิทยาลัย
+- ตรวจช่วงแรก: API 50/50 ผ่าน; Chrome 39 กลุ่มผ่าน รวมกรอกจัดสรรน้ำไฟจริงและคืนยอด 1345 ของ Fixture; cleanup ยืนยันข้อมูลเดิมครบ 30 Models; กำลังรันทวนหลังเพิ่ม guard และตรวจ Build/Unit/Lint รอบท้าย
+- Environment: เริ่มงาน MySQL ปิด จึงเปิด Docker Desktop และ container เดิมด้วย Volume เดิม ไม่ Reset/Seed ไม่เพิ่มฐานหรือเปลี่ยน .env; ไม่มี Schema/Dependencies ใหม่ ลบเฉพาะไฟล์ผล Hash ทดสอบที่ติดตาม .ui-artifacts/operations-baseline.json และเพิ่ม Ignore ไม่ลบข้อมูลหอ
+- ชุดส่ง: check:delivery ผ่านหลังเก็บกวาด Lockfiles3ส่วนตรง; git log ตามพาธ Environment/key/database ที่ระบุไม่พบ ไม่ใช่การสแกน Secret ทั้งประวัติหรือรับรองทุกชนิด; ยังไม่ Commit/Push
+- ค้างจริง: การติดตั้งเครื่องอื่น การตรวจยอดกับเจ้าของหอ และครูตรวจรับต้องทำบนสถานการณ์จริง ไม่ใช้ผลเครื่องเดิมแทน ดู SUBMISSION_CHECKLIST.md
+- ผลปิดช่วง: API หลังเพิ่ม guard ผ่าน 50/50; Chrome 39 กลุ่ม; Unit 5/5; TypeScript/Lint/Format/Build ผ่าน คู่มือมีภาพหน้าจอจาก Fixture ทดสอบสองภาพใน docs/images ที่ตรวจด้วยตาแล้ว ไม่ใช่ข้อมูลผู้ใช้จริง; ไม่มี Migration เพิ่ม
+- ตรวจส่งท้าย: check:delivery ผ่าน 165 text files/3 Lockfiles; ลิงก์เอกสาร 67 ลิงก์และ JS syntax ผ่าน Schema diff ไม่มีความต่าง db:check เชื่อม MySQL 8.4.13/dormify ได้ครบ 30 Models หอ1/ห้อง8 ข้อมูลตั้งต้นรอบนี้มีมิเตอร์1/Session6/Audit14 อยู่แล้ว จึงไม่ใช้จำนวนเก่าจากวันที่17มาอ้างว่าไม่เปลี่ยน ใช้ผล Hash baseline ของ Fixture ยืนยัน
+- เปิด npm.cmd start กลับหลังทดสอบ Frontend 127.0.0.1:5173 และ API 127.0.0.1:5000 ตอบ 200 ทั้งคู่ ใช้เฉพาะ Loopback ยังไม่ Commit/Push
+
+### 2026-11-17 — เอาบริการอาหารและส่วนต้นฉบับที่ไม่ใช้ออกจากเว็บ (Asia/Bangkok)
+
+- คำขอ: ลบตัวเลือกมีบริการอาหาร และทำส่วนอื่นตามข้อแนะนำ คือเอารีวิว/ดาว เมนูอาหาร และประเภทที่พักหลายแบบออก เก็บข้อกำหนดหอพักไว้
+- ทำแล้ว: ลบตัวเลือกบริการอาหารใน DormitoryForm และป้ายอาหาร Home; ลบส่วนอาหาร/รีวิวใน PropertyDetails; ลบ MessMenuDisplay.tsx, ReviewSection.tsx, PropertyTypeSelect.tsx; ลบ Type Review/MealMenu และฟิลด์แสดงผลเก่าจาก client/src/types/api.ts
+- ฟอร์มส่ง HOSTEL เมื่อสร้างใหม่ แก้หอเดิมเก็บ type เดิม ไม่ส่ง hasMess เพื่อไม่เขียนทับข้อมูลที่ซ่อนแล้ว ไม่เปลี่ยน Backend/Schema/API contract
+- ตรวจช่วงแรก: npm.cmd --prefix client run typecheck, lint, build ผ่าน; กำลังรัน Chrome เดิมพร้อมเพิ่มตรวจไม่มีบริการอาหารแม้ Fixture เก่ามี hasMess=true ไม่มีตัวเลือกประเภท/อาหาร ไม่มีรีวิว แต่ยังมีข้อกำหนดและแก้ข้อมูลหอได้
+- ข้อมูล/Environment: หยุดเว็บ Local ก่อน UI test ใช้ Fixture namespace สุ่มใน dormify เดียว ไม่ Reset/Seed; ตาราง Payment/Complaint และความสัมพันธ์เดิมยังไม่ลบ ไม่สร้างสำเนาสำรอง ไม่ Commit/Push
+- ผลปิดงาน: Chrome test:ui ผ่าน 39 กลุ่ม รวมตรวจส่วนที่เอาออกและแก้ข้อมูลหอเดิมโดย hasMess ไม่เปลี่ยน Fixture cleanup ผ่าน ข้อมูลเดิมไม่เปลี่ยน; ไม่รัน API suite ซ้ำเพราะไม่มีการเปลี่ยน Backend เปิดเว็บ Local กลับหลังตรวจ
+- เริ่มต่อ: ตรวจหน้าจอตามความต้องการผู้ใช้ งานยังไม่ Commit/Push ตารางเดิมที่ไม่ใช้ยังคงไว้ ไม่ต้อง migrate หรือติดตั้งแพ็กเกจเพิ่ม
+
+### 2026-11-17 — ตรวจส่วนที่ยังติดจากต้นฉบับ (Asia/Bangkok)
+
+- คำขอ: ระบุของเดิมที่ยังเหลือ ไม่ได้สั่งลบหรือปรับระบบ
+- พบ: ส่วนแสดงความคิดเห็น/ดาวยัง render แต่ไม่มีระบบส่งรีวิว; เมนูอาหารเป็น Component และ optional presentation field ไม่มี Model/API จัดตารางอาหาร; hasMess ยังบันทึกได้และแสดงบริการอาหารหน้า Home; HOSTEL/PG/FLAT และ rules ยังใช้ในแบบฟอร์มหอ
+- โครงสร้างเดิม: Property/ownerId และ /api/bookings/owner ยังอยู่ โดย URL หลังจำกัด ADMIN; Payment/Complaint รุ่นเดิมยังมีใน Schema แต่ไม่พบ prisma.payment/prisma.complaint ใน Runtime server/src ระบบจริงรุ่นใหม่ใช้ InvoicePayment/MaintenanceRequest
+- ตรวจ: อ่านไฟล์และค้นด้วย rg เท่านั้น ไม่รันแอปหรือทดสอบใหม่ ไม่แก้โค้ด/Schema/ข้อมูล; อัปเดตบันทึกและสถานะเท่านั้น
+- เริ่มต่อ: หากสั่งเก็บกวาด ให้แยก UI ที่ไม่ใช้จากข้อมูล/ความสัมพันธ์เดิม ห้ามลบตารางหรือ Migration เพียงเพราะไม่มีหน้าจอใช้งาน
+
+### 2026-11-17 — ปิดงานหอเดียว ปิดสัญญา ส่วนลดรายวัน และประวัติครบ (Asia/Bangkok)
+
+- คำขอ/กติกา: ทำงานค้างจากการตรวจซ้ำให้สมบูรณ์ ผู้ใช้ยืนยันเฉลี่ยส่วนลดค่าเช่าตามวันอยู่จริงในรอบ ไม่ใช้ยอด Admin เดาเอง
+- ทำแล้ว: ทะเบียนหอเดียวและขอบเขต API/Worker, /end เรียกปิดยอดเดียวกับ /closeout, ประเภทใบปรับยอดและเพดานตามค่าใช้จ่าย, Snapshot ส่วนลดเดิม/ใช้จริง/วัน, Server pagination และ CSV ทุกหน้าสำหรับประวัติการใช้งาน/ข่าว/แจ้งเตือน/แก้มิเตอร์
+- ไฟล์หลักและข้อจำกัด: docs/COMPLETION_REVIEW_20261117.md รวมรายการไฟล์; อัปเดต PROJECT_STATUS, BUSINESS_RULES, SETUP_NEW_MACHINE, README, DORM_OPERATIONS และ Traceability Matrix ให้แยกประวัติเดิมจากสถานะใหม่
+- ตรวจจริง: db:setup ผ่าน Migration ลำดับที่ 7; Hash ก่อน–หลังตรงกันทั้ง 29 Models เดิม; npm.cmd --prefix server test ผ่าน 49/49; client test ผ่าน 5/5; Lint/TypeScript/Build ผ่าน; Chrome test:ui ผ่าน 39 กลุ่ม รวม Export CSV ที่อ่านเนื้อหาจริง 503 แถวและส่วนลด 1/31 วัน
+- ระหว่างตรวจ: Chrome sandbox รอบแรก timeout; รอบต่อมาพบตัวทดสอบกดก่อนรายการ API พร้อม แก้ให้รอปุ่มพร้อมแล้วรันใหม่ครบผ่าน ไม่อ้างผลรอบที่ล้มเหลวว่าเสร็จ ทุกครั้ง Cleanup ตรวจข้อมูลเดิมครบ 30 Models ไม่เปลี่ยน
+- ข้อมูล/Environment: ใช้ dormify เดียว ไม่ Reset/Seed ไม่สร้างฐานเพิ่ม ไม่แก้ Secret เพิ่ม Mapping หอเดิมและ nullable itemType เท่านั้น; หยุดเว็บก่อน Migration/ทดสอบ งานยังไม่ Commit/Push
+- ค้าง/จุดเริ่มต่อ: ตรวจรับข้อมูลหอจริงและยืนยันผลกับเจ้าของหอ/ครู ส่วนปรับน้ำไฟคร่อมวันออกและใบปรับยอดนำเข้า NULL ต้องตรวจหลักฐานตามรายงาน ไม่เดาวิธีแบ่งหรือตั้งสิทธิ์คืนเอง
+- ตรวจปิดงานเพิ่ม: Schema diff ไม่พบความต่าง; Backend syntax 33 ไฟล์และลิงก์เอกสารภายใน 52 ลิงก์ผ่าน; Format/Build รอบสุดท้ายผ่าน เปิด npm.cmd start กลับ Local 5173/5000 ตอบ 200 และ API หอพักแสดงหนึ่งแห่ง
+
+### 2026-11-17 — กำลังปิดงานสี่จุดและยืนยันเฉลี่ยส่วนลดค่าเช่า (Asia/Bangkok)
+
+- คำขอ: ทำระบบให้สมบูรณ์ต่อจากการตรวจซ้ำ ผู้ใช้ยืนยันส่วนลดค่าเช่าเฉลี่ยตามวันอยู่จริง
+- ทำแล้วระหว่างงาน: เพิ่มทะเบียนหอเดียวและขอบเขต API รวมจบสัญญาเข้ากับปิดยอด แยกประเภทปรับยอดและคำนวณส่วนลดตามวัน เพิ่ม API ประวัติแบ่งหน้าฝั่ง Server พร้อมส่งออกทุกหน้า
+- ไฟล์หลัก: server/prisma/migrations/20261117020000_single_dormitory/, server/src/lib/installation.js, server/src/routes/closeoutRoutes.js, server/src/routes/historyRoutes.js, client/src/components/CloseoutTools.tsx, client/src/hooks/useHistoryResource.ts
+- ตรวจจริงช่วงแรก: db:setup ผ่านบน dormify เดิม Hash ข้อมูลเดิมทั้ง 29 Models ตรงกัน (ต้องคง Enum ในข้อมูล Hash); API 48/48 ผ่านก่อนเพิ่มกรณีประวัติเกิน 500/ส่วนลดบิลอนาคต; TypeScript ผ่าน
+- Environment: หยุดเว็บ Local ก่อน Migration ไม่ Reset/Seed ไม่สร้างฐานเพิ่ม ไม่เปลี่ยน Secret; เพิ่ม Mapping หอเดิมหนึ่งแห่งและคอลัมน์ nullable เท่านั้น
+- ค้าง: Chrome รอบ sandbox เชื่อม DevTools ไม่ได้ กำลังรันใหม่พร้อมสิทธิ์ที่เหมาะสม ยังไม่สรุป UI ผ่าน ต้องรัน API หลังเพิ่มกรณีล่าสุด ตรวจ Lint/Build และสรุปเอกสารก่อนจบงาน
+
+### 2026-11-17 — จบการตรวจซ้ำพร้อมแก้เงินคืนและรายงานสิ่งที่ยังขาด (Asia/Bangkok)
+
+- ขอบเขต: ตรวจโค้ด/เงื่อนไขนอกผลทดสอบเดิมตามคำขอเช็กละเอียด ไม่ถือว่าคำตอบเดิมว่าเหลือเพียงข้อมูลจริงเพียงพอ
+- ทำแล้ว: แยก refundEligible ที่สร้างจากสถานะรับเงินจริง ป้องกันคืนส่วนลดก่อนชำระซ้ำ; ย้าย Refund/Proof read ไปหลัง row lock; ไม่ให้สลิปเปลี่ยนหลัง Review; หยุดปิดยอดเมื่อส่วนลดทำให้คืนเกินเงินรับสุทธิ
+- Migration: เพิ่ม 20261117010000_refund_eligibility คอลัมน์ nullable เท่านั้น ไม่มี InvoiceAdjustment จริงก่อนใช้; Hash ทั้ง 29 Models เดิมก่อน–หลังตรงกัน ข้อมูล NULL ไม่ให้เดาสิทธิ์คืนเงิน
+- ไฟล์: server/prisma/schema.prisma/Migration, routes/closeoutRoutes.js/billingRoutes.js, client InvoiceTools.tsx/types/operations.ts, test/operations.test.js และ client/scripts/ui-smoke.mjs; เอกสารรายงาน DEEP_REVIEW_20261117.md, PROJECT_STATUS/WORK_LOG/SETUP_NEW_MACHINE/PHASE_FINISH/RTM
+- ตรวจจริง: API 48/48; Chrome 39 กลุ่มรันใหม่; Unit 5/5 และ TypeScript/Lint/Format/Build ผ่าน; Regression ถือ Lock เพื่อให้ Refund สองคำขอรอแล้วตรวจ Audit เพียงครั้งเดียว, Review มาก่อน Upload แล้วสลิปเดิมยังอยู่, ส่วนลดก่อนชำระ 20 ถูกหักแล้ว UI ไม่เสนอคืนซ้ำ และส่วนลดเต็มเดือนปิดรายวันถูกหยุดเมื่อคืนเกิน
+- ข้อมูล/Environment: API/UI ตามลำดับ dormify เดียวและ cleanup ตรวจ baseline ทุก Model ผ่าน Schema diff ไม่พบความต่าง ไม่มี Reset/Seed หรือฐานเพิ่ม ไม่เปลี่ยน Secret/Dependency รอบนี้ ไม่รัน npm audit ซ้ำ ไม่ Commit/Push; หยุด session npm start เดิมก่อน Prisma Generate เพราะ DLL บน Windows ถูกล็อก
+- สิ่งที่ยังขาดจริง: Backend createProperty ยังไม่บังคับหอเดียว (UI เลือกหอ/กันหลายรายการเท่านั้น); ปุ่มจบการครอบครองเดิมกับปิดยอดยังแยกกัน; ส่วนลด/ใบปรับอนาคตบางกรณีต้องจัดสรรก่อน; Export/แบ่งหน้าบางส่วนมีเฉพาะข้อมูลที่โหลดมา ไม่ครบประวัติขนาดใหญ่
+- จุดเริ่มต่อ: แก้ข้อกำหนดหอเดียวใน Backend และรวมขั้นตอนปิดสัญญาให้ปลอดภัยโดยรักษาข้อมูล/ทดสอบในฐานเดิม จากนั้นตกลงกรณีส่วนลดพิเศษและตรวจรับกับผู้ใช้จริง รายงานนี้ไม่ได้เริ่มเปลี่ยนโครงสร้าง Single dorm หรือเพิ่มฟีเจอร์นอก PDF เอง
+- ปิดงาน: เปิด npm start กลับ ตรวจเว็บ 5173/API 5000/Properties API HTTP 200 และลิงก์ Local เอกสารที่เปลี่ยนไม่เสีย ข้อความ LF/CRLF ของ Git เป็น Warning ไม่พบ whitespace error ไม่มี Commit/Push
+
+### 2026-11-17 — ตรวจซ้ำพบช่องว่างการคืนเงินและการล็อกข้อมูล (Asia/Bangkok)
+
+- คำขอ: ผู้ใช้ให้เช็กอีกครั้งอย่างละเอียด จึงตรวจโค้ดธุรกรรมและกรณีที่ผล 45/39 เดิมยังไม่พิสูจน์ ไม่ถือว่าทุกกรณีเสร็จแล้ว
+- พบและแก้: ใบลดหนี้ก่อนรับชำระถูกเสนอคืนเงินหลังชำระได้อีกครั้ง เพิ่ม refundEligible ที่ระบบกำหนดจากสถานะขณะสร้าง ใบลดหนี้ก่อนชำระไม่ให้คืนซ้ำ; ข้อมูลเก่าค่า NULL ต้องตรวจสิทธิ์ก่อน ไม่อนุมานว่าได้เงินคืน
+- พบและแก้: อ่าน Snapshot ก่อนล็อกใน Refund/Proof Upload อาจใช้สถานะเก่าขณะส่งพร้อมกัน ย้ายการอ่านธุรกรรมไปหลัง Row lock และไม่ให้แก้หลักฐานเมื่อบิลมี Settlement/ชำระแล้ว
+- ป้องกันเพิ่ม: หากส่วนลดมากกว่าค่าใช้จ่ายตามวันจริง ให้หยุดปิดยอด ไม่คำนวณคืนเกินเงินรับสุทธิ ยังต้องกำหนดวิธีจัดสรรส่วนลดกรณีพิเศษนี้ก่อนรองรับอัตโนมัติ
+- ไฟล์: server/prisma/schema.prisma, migration 20261117010000_refund_eligibility, routes/closeoutRoutes.js/billingRoutes.js, client/src/components/InvoiceTools.tsx, types/operations.ts และชุด operations/UI smoke tests
+- ตรวจจริงระหว่างงาน: Migration ผ่านและ Hash ข้อมูลเดิม 29 Models ตรงกัน API ใหม่ผ่าน 47/47 รวม Concurrent refund ที่ Audit เกิดครั้งเดียว และ Proof รอหลัง Review แล้วถูกปฏิเสธ ไม่ทับสลิปที่ตรวจแล้ว; รอ Chrome รอบใหม่และตรวจ Frontend ปิดงาน
+- Environment: หยุด npm start session เดิมก่อน Generate Prisma เพราะ Windows ล็อก DLL ไม่มีการลบไฟล์ฐาน Reset/Seed หรือเปลี่ยน Secret ไม่มีข้อมูล InvoiceAdjustment จริงตอนเพิ่มคอลัมน์ nullable
+- ข้อสรุปแก้คำกล่าวก่อนหน้า: ระบบมี Flow หลักแล้ว แต่การบอกว่าเหลือเพียงกรอกข้อมูลจริงกว้างเกินหลักฐาน ต้องแยกกรณีส่วนลดพิเศษและข้อจำกัดที่ยังไม่รองรับออกจากการทดสอบที่ผ่าน ไม่ Commit/Push
+
+### 2026-11-17 — ส่งงานส่วนที่เหลือพร้อมผลตรวจจริง (Asia/Bangkok)
+
+- คำขอ: ผู้ใช้สั่งทำรายการที่เหลือ และยืนยันแบ่งน้ำไฟตามจุดอ่านจริงวันเปลี่ยนอัตรา ค่าเช่ากลางเดือนตามวันจริงในรอบ พร้อมคืนส่วนต่างชำระเกิน
+- ทำแล้ว: รูปห้องถอดรหัส/แปลง WebP/ลบ EXIF สูงสุด 8 รูป และสิ่งอำนวยความสะดวกหอ/ห้อง; มิเตอร์ก่อนออกบิลแก้พร้อมประวัติ เปลี่ยนเครื่องต่อหน่วยสะสม แบ่งอัตราตามวัน; ใบปรับยอด/ลดหนี้ คืนเงินแยก/กันซ้ำ ปิดสัญญารายวันพร้อมตรวจตัวอย่างและยอดเปลี่ยน; สัญญาฉบับถัดไปต่ออายุ/ย้าย แก้วันสิ้นสุดและประวัติ; อัตโนมัติออกบิลแบบ Admin เปิด/รอข้อมูลครบ; แบ่งหน้าและ CSV ป้องกันสูตร; รายงานเงินสุทธิรวมเงินจริงปิดยอดและคืนเงินแยกประกัน
+- ไฟล์: รายการเต็มและวิธีใช้ใน docs/PHASE_FINISH_20261117.md; เพิ่ม Schema/Migration 20261117000000_remaining_operations รวม 29 Models; Backend routes/lib, Client components/pages/types/utils, package/lockfiles, tests; อัปเดต README/SETUP_NEW_MACHINE/BUSINESS_RULES/DORM_OPERATIONS/RTM/PROJECT_STATUS
+- ตรวจจริงล่าสุด: npm --prefix server test ผ่าน 45/45, npm --prefix client run test:ui Chrome ผ่าน 39 กลุ่ม, npm --prefix client test ผ่าน 5/5, TypeScript/Lint/Format/Build ผ่าน; Entry JS 329.83 KB/gzip 107.32 KB ใช้ Vite 6.4.6/React Router 7.18.5 จริง ไม่ใช่ผลรุ่นก่อน
+- ตรวจข้อมูล: Hash ของข้อมูลเดิม 24 Models ก่อน–หลัง Migration ตรงกัน; API/UI รันตามลำดับใน dormify เดียวและตรวจ baseline ทุก 29 Models หลัง cleanup ผ่าน ไม่มี Reset/Seed/ลบข้อมูลเดิมหรือฐานเพิ่ม; migrate diff ไม่พบความต่าง
+- db:check หลังตรวจ: User 3/AuthSession 5/Property 1/Room 8/Booking 1/Notification 1/AuditLog 11/RentalPolicy 3 Models อื่นเป็น 0 ไม่มีรูป สัญญา บิล หรือรายการเงิน Fixture ค้าง เป็นจำนวน ณ ตอนตรวจ ไม่ใช่ค่าคงที่หลังผู้ใช้เริ่มใช้งาน
+- ความปลอดภัย: ตรวจ npm audit ทั้ง Root/server/client รายงาน 0 ช่องโหว่ หลังเพิ่ม sharp ตรึง nodemon 3.1.11 อัปเดต Vite 6.4.6/Router 7.18.5 และ Patch ที่เข้ากันได้; รูปไม่ใช้ชื่อไฟล์เป็นพาธ หลักฐานชำระยัง Private ตามเดิม สิทธิ์ Admin/User/คนละเจ้าของผ่าน API/UI และ node --check ของ Backend ที่เปลี่ยน 20 ไฟล์ผ่าน Source ไม่พบอักขระเสีย ไม่ใช่ผล Penetration Test
+- PDF: Hash SHA-256 ตรงกับรายงานถอดเดิม จึงใช้ข้อความนั้นเทียบขอบเขต 25 ข้อและแก้ RTM ตาม Flow ที่ทดสอบจริง ข้อจำกัด Glyph เดิมยังมี ไม่อ้างว่าเป็นผลตรวจรับจากครู/ผู้ใช้จริง
+- ปัญหาที่แก้: Docker ปิดและ Root MYSQL_PASSWORD ว่าง คืนค่าจาก Backend URL เดิมและเปิด Volume เดิม Docker หยุดระหว่างงานอีกครั้งจึงเปิดกลับ ไม่สุ่มหรือเปลี่ยนรหัสจริง; ย้าย Admin guard ของ Router มิเตอร์ไปเฉพาะ Endpoint เพื่อไม่ขวาง User ดู Closeout; ปฏิเสธ Payment ซ้ำหลังมี Settlement ได้; ป้องกันยืนยันปิดยอดด้วยยอดเก่าจากตัวอย่าง
+- Environment/การย้ายเครื่อง: ต้อง npm ci ทั้ง server/client และ db:setup หลังรับ Lockfile/Schemaใหม่ ใช้ Node 20.19+ แนะนำ Node 24; รูปอยู่ใน MySQL ต้องย้ายข้อมูลจริงแยกจาก Git; ไม่แตะ Secret อื่น ไม่มีการเปิด Public Internet
+- ข้อจำกัด: มิเตอร์/สัญญา/บิลที่เป็นหลักฐานไม่แก้ทับย้อนหลัง ใช้ปรับยอดหรือฉบับใหม่; หากบิลอนาคตมีรายการปรับที่จัดสรรไม่ได้ระบบหยุดให้ตรวจ; เงินประกันไม่หัก/โอนคืนเอง; ฟังก์ชันจบการครอบครองเดิมยังอยู่ ต้องใช้แบบปิดยอดเมื่อต้องการคำนวณรายวัน; Export CSV เฉพาะข้อมูลที่โหลดมา ข่าว/แจ้งเตือน/Audit ยังมีขีดจำกัด; อัตโนมัติต้อง Backend เปิด ไม่มี Email/SMS/เซ็นออนไลน์/คืนธนาคารจริง
+- เริ่มต่อ: ให้ผู้ใช้กรอกรูป/สิ่งอำนวยความสะดวกและอัตราจริง ทดลองรับงานครบกระบวนการและให้ครูตรวจ เอกสารและไฟล์งานก่อนเริ่มได้รับการรักษาไว้ งานทั้งหมดรอบนี้ยังไม่ Commit/Push
+
+### 2026-11-17 — จุดบันทึก Migration และ API ชุดปิดงาน (Asia/Bangkok)
+
+- ขอบเขต: ทำรายการที่เหลือตามคำสั่งผู้ใช้และกติกาการแบ่งอัตรา/คืนค่าเช่าที่เพิ่งยืนยัน
+- ทำแล้ว: Migration เพิ่ม RoomPhoto/MeterChange/LeaseRevision/LeaseCloseout/InvoiceAdjustment และคอลัมน์ที่เกี่ยวข้อง รวม 29 Models ตรวจ Hash ของข้อมูลเดิม 24 Models ตรงกัน ไม่มี Reset/Seed หรือฐานเพิ่ม
+- โค้ด: รูปถอดรหัส/แปลง WebP และรายการสิ่งอำนวยความสะดวก; มิเตอร์แก้ก่อนออกบิลพร้อมประวัติ/เปลี่ยนมิเตอร์คงหน่วยสะสม; แบ่งน้ำไฟตามวันเปลี่ยนอัตราจริง; ใบปรับยอด บันทึกคืนเงินจริง ปิดยอดรายวันแยกเงินประกัน; สัญญาฉบับถัดไป/แก้วันสิ้นสุด; หน้าจอใหม่ แบ่งหน้า/CSV และบิลอัตโนมัติเปิดโดย Admin
+- ไฟล์หลัก: server/prisma/schema.prisma และ migration 20261117000000_remaining_operations, routes roomMedia/meter/closeout/leaseRevision, lib billing-calculation/invoice-service/auto-billing/invoice-totals/room-presentation/meter-validation, client components RoomMedia/MeterTools/LeaseTools/CloseoutTools/InvoiceTools และ OperationUI
+- ตรวจจริงช่วงนี้: API 45/45 พร้อม cleanup ตรวจข้อมูลเดิมผ่าน; TypeScript/Lint ผ่านก่อนตรวจปิดงาน; ยังต้องทดสอบ Chrome หน้าจอใหม่และตรวจ Build รอบสุดท้าย
+- ปัญหาแก้แล้ว: Router มิเตอร์ตรวจ Admin แบบรวมไปขวาง User อ่าน Closeout ย้ายไปตรวจเฉพาะ Endpoint; อนุญาตปฏิเสธ Payment ซ้ำที่ยัง Pending หลังบิลมี Settlement แล้ว เพื่อไม่ให้ค้างปิดยอดไม่ได้
+- Environment/แพ็กเกจ: Docker ปิดและ Root MYSQL_PASSWORD ว่าง คืนค่าจาก URL เดิมและเปิด Volume เดิม; Docker หยุดอีกครั้งระหว่างทำงานจึงเปิดกลับ ไม่มีลบข้อมูล; เพิ่ม sharp ตรวจภาพ และตรึง nodemon รุ่นเดิม 3.1.11 แก้คำเตือนฝั่ง Server ผลติดตั้งแจ้ง 0 ช่องโหว่ ฝั่ง Client ยังตรวจและแก้ Dependency อยู่
+- ทำต่อ: ทดสอบ UI ใหม่/รายงานความปลอดภัย/ตรวจ PDF และเอกสารให้ตรง ไม่อ้างว่าจบทั้งหมด งานค้างเอกสารก่อนเริ่มยังอยู่ ไม่ Commit/Push
+
+### 2026-11-17 — เริ่มงานปิดส่วนที่เหลือและยืนยันวิธีคิดเงิน (Asia/Bangkok)
+
+- คำขอ: ผู้ใช้สั่งทำรายการที่เหลือ ได้แก่ รูป/สิ่งอำนวยความสะดวก มิเตอร์ บิล สัญญา ตาราง/ส่งออก และตรวจรับตามขอบเขต
+- ยืนยันเพิ่ม: น้ำไฟแบ่งตามเลขมิเตอร์จริง ณ วันเปลี่ยนอัตรา; ย้ายออกกลางเดือนคิดค่าเช่าตามวันจริงในรอบสัญญาและคืนยอดชำระเกิน บันทึกใน BUSINESS_RULES.md แล้ว
+- ตรวจเริ่มงาน: Git มีงานเอกสารรับช่วงสองไฟล์ค้างอยู่ รักษาไว้; db:check ไม่ผ่านเพราะ Docker ปิดและ MYSQL_PASSWORD หลักว่าง จึงเปิด Docker Desktop และคืนค่า Compose ที่ขาดจาก DATABASE_URL เดิม ไม่สุ่มหรือเปลี่ยนรหัสจริง ไม่เปิดเผยค่า
+- ระหว่างดำเนินการ: ยังไม่อ้างว่าฟีเจอร์ใหม่ผ่านหรือ Migration ใช้แล้ว ต้องตรวจข้อมูลจริงก่อน Migration และใช้ Fixture ใน dormify เดียวตามลำดับ
+- ทำต่อ: เพิ่มรูป/สิ่งอำนวยความสะดวกพร้อมตรวจชนิดไฟล์ จากนั้นงานมิเตอร์/บิล/สัญญาและตาราง บันทึกผลเมื่อจบแต่ละช่วง
+
+### 2026-11-17 — ตรวจรับช่วงและสรุปความคืบหน้า (Asia/Bangkok)
+
+- คำขอ: ผู้ใช้ถามว่าทำถึงไหนแล้ว
+- ทำแล้ว: อ่าน PROJECT_STATUS/WORK_LOG/BUSINESS_RULES ตรวจ Git status/log และโค้ดจริงใน client/src/App.tsx, config/navigation.ts, server/prisma/schema.prisma พบ Routes และ Models ของระบบบริหารพื้นฐานยังอยู่ตามบันทึกเดิม
+- ข้อค้นพบ: ก่อนแก้เอกสาร Working Tree สะอาด main ที่ 911d12c ตรง origin/main ในเครื่อง แสดงว่างานเดิมมี Commit แล้ว ข้อความยังไม่ Commit ในประวัติวันที่ 14 ไม่ใช่สถานะล่าสุด ไม่ได้ Fetch หรืออ้างว่า Remote สดตรงกัน
+- ไฟล์เปลี่ยน: docs/PROJECT_STATUS.md และ docs/WORK_LOG.md เพิ่มจุดรับช่วงล่าสุดและแยกผลตรวจเก่าจากงานวันนี้
+- ตรวจจริง: git status --short --branch, git log -1, git diff --name-only และ rg ตรวจ Routes/Schema; ตรวจลิงก์ Local และ git diff --check ของเอกสาร ไม่รัน API/UI/Build/DB ใหม่ ผล 40/40 API, Chrome 33 กลุ่ม, Unit 3/3 และ Build ผ่านยังเป็นหลักฐานวันที่ 14 เท่านั้น
+- ข้อมูล/Environment: ไม่เปลี่ยนโค้ด Schema แพ็กเกจ .env หรือข้อมูล ไม่เปิดระบบหรือย้ายข้อมูล สองไฟล์บันทึกใหม่ยังไม่ Commit/Push
+- เริ่มต่อ: รูป/สิ่งอำนวยความสะดวกเป็นข้อเสนอ งานค้างการแก้มิเตอร์ อัตรากลางรอบ บิลปิดสัญญา สัญญาต่ออายุ/ย้ายห้อง แบ่งหน้า/ส่งออกและตรวจรับยังต้องประเมินตามขอบเขต รอคำสั่งผู้ใช้ก่อนพัฒนาต่อ และตรวจ Runtime/DB ใหม่ก่อนอ้างสถานะใช้งานปัจจุบัน
 
 ### 2026-11-14 — บันทึกสรุปสิ่งที่ทำและจุดเริ่มต่อ (Asia/Bangkok)
 

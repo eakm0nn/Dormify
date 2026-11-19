@@ -5,6 +5,7 @@ import Button from '../components/Button';
 import { EmptyState, ErrorMessage, Loading } from '../components/Feedback';
 import RoomForm from '../components/RoomForm';
 import RoomTable from '../components/RoomTable';
+import RoomMedia from '../components/RoomMedia';
 import { useDormitory } from '../context/DormitoryContext';
 import api from '../services/api';
 import type { Room } from '../types/api';
@@ -13,6 +14,8 @@ import { thaiError } from '../utils/errors';
 const AdminRooms = () => {
   const { dormitory, loading, error, refresh } = useDormitory();
   const [showForm, setShowForm] = useState(false);
+  const [mediaId, setMediaId] = useState<number | null>(null);
+  const mediaRoom = dormitory?.rooms.find((room) => room.id === mediaId);
   const [success, setSuccess] = useState('');
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [statusRoom, setStatusRoom] = useState<Room | null>(null);
@@ -77,6 +80,7 @@ const AdminRooms = () => {
             rooms={dormitory.rooms}
             onEdit={edit}
             onToggle={toggle}
+            onMedia={(room) => setMediaId(room.id)}
             disabled={updating || showForm}
           />
         ) : (
@@ -121,6 +125,9 @@ const AdminRooms = () => {
           onSaved={saved}
           onCancel={() => setShowForm(false)}
         />
+      )}
+      {mediaRoom && (
+        <RoomMedia room={mediaRoom} refresh={refresh} onClose={() => setMediaId(null)} />
       )}
       {content}
       <p className="mt-4 text-xs text-muted">

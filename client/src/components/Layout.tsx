@@ -1,6 +1,13 @@
 import { ArrowUpRight, ChevronRight, LogOut, Menu, UserRound, X } from 'lucide-react';
-import { Suspense, useEffect, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import {
+  Link,
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+} from 'react-router-dom';
 import { adminMenus, userMenus } from '../config/navigation';
 import { useAuth } from '../context/AuthContext';
 import { useDormitory } from '../context/DormitoryContext';
@@ -11,37 +18,79 @@ import { Loading } from './Feedback';
 
 const Layout = () => {
   const { user, logout } = useAuth();
-  const { dormitory } = useDormitory();
+  const { dormitory, loading: dormitoryLoading } = useDormitory();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname, hash, key } = location;
+  const navigationType = useNavigationType();
+  const publicScroll = useRef<{ pathname: string; hash: string; key: string } | null>(null);
+  const homeState = {
+    ...(pathname === '/' ? location.state : { roomSearch: location.state?.roomSearch }),
+    publicNavigation: true,
+  };
+  const workspace = pathname.startsWith('/admin') || pathname.startsWith('/user');
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 1023px)').matches);
+  const navigationTrigger = useRef<HTMLButtonElement>(null);
+  const [isMobile, setIsMobile] = useState(
+    () => window.matchMedia(workspace ? '(max-width: 1023px)' : '(max-width: 1279px)').matches,
+  );
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState('');
-  const workspace = pathname.startsWith('/admin') || pathname.startsWith('/user');
   const menus = user?.role === 'ADMIN' ? adminMenus : userMenus;
+  const menuGroups = [...new Set(menus.map((menu) => menu.group))];
   const active = menus.find((menu) => menu.to === pathname);
   const dashboardPath = user?.role === 'ADMIN' ? '/admin' : '/user';
   const closeMobile = () => setMobileOpen(false);
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 1023px)');
+    const media = window.matchMedia(workspace ? '(max-width: 1023px)' : '(max-width: 1279px)');
     const update = () => {
       setIsMobile(media.matches);
       setMobileOpen(false);
     };
+    update();
     media.addEventListener('change', update);
     const onEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMobileOpen(false);
+      if (
+        event.key === 'Escape' &&
+        navigationTrigger.current?.getAttribute('aria-expanded') === 'true'
+      ) {
+        setMobileOpen(false);
+        navigationTrigger.current.focus();
+      }
     };
     window.addEventListener('keydown', onEscape);
     return () => {
       media.removeEventListener('change', update);
       window.removeEventListener('keydown', onEscape);
     };
-  }, []);
+  }, [workspace]);
   useEffect(() => {
     setMobileOpen(false);
-  }, [pathname]);
+  }, [pathname, hash]);
+  useEffect(() => {
+    const previous = publicScroll.current;
+    if (pathname !== '/') {
+      publicScroll.current = { pathname, hash, key };
+      return;
+    }
+    if (dormitoryLoading) return;
+    if (previous?.key === key && previous.pathname === pathname && previous.hash === hash) return;
+    publicScroll.current = { pathname, hash, key };
+    // Keep cross-page restoration and filter edits; section history follows its anchors.
+    if (
+      navigationType === 'REPLACE' &&
+      previous?.pathname === '/' &&
+      previous.hash === hash &&
+      !location.state?.publicNavigation
+    )
+      return;
+    if (navigationType === 'POP' && !hash && previous?.pathname !== '/') return;
+    if (hash) {
+      document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start', behavior: 'auto' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [pathname, hash, key, navigationType, dormitoryLoading, location.state?.publicNavigation]);
   const handleLogout = async () => {
     setLoggingOut(true);
     setLogoutError('');
@@ -90,13 +139,14 @@ const Layout = () => {
       >
         ข้ามไปเนื้อหาหลัก
       </a>
-      <header className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur-md">
+      <header className="site-header sticky top-0 z-40 border-b border-line bg-white">
         <div
           className={`${workspace ? 'px-4 sm:px-6' : 'container-page'} flex h-20 items-center justify-between gap-3`}
         >
           <div className="flex items-center gap-2">
             {workspace && (
               <button
+                ref={navigationTrigger}
                 onClick={() => setMobileOpen(!mobileOpen)}
                 className="icon-button lg:hidden"
                 aria-label={mobileOpen ? 'ปิดเมนู' : 'เปิดเมนู'}
@@ -112,19 +162,22 @@ const Layout = () => {
             )}
           </div>
           {!workspace && (
-            <nav aria-label="เมนูหลัก" className="hidden items-center gap-2 lg:flex">
-              <Link to="/" className="nav-link">
+            <nav aria-label="เมนูหลัก" className="hidden items-center gap-2 xl:flex">
+              <Link to="/" state={homeState} className="nav-link">
                 หน้าหลัก
               </Link>
-              <a href="/#rooms" className="nav-link">
+              <Link to="/#rooms" state={homeState} className="nav-link">
                 ห้องพัก
-              </a>
-              <a href="/#facilities" className="nav-link">
+              </Link>
+              <Link to="/#facilities" state={homeState} className="nav-link">
                 สิ่งอำนวยความสะดวก
-              </a>
-              <a href="/#contact" className="nav-link">
+              </Link>
+              <Link to="/#rules" state={homeState} className="nav-link">
+                ข้อกำหนดการอยู่อาศัย
+              </Link>
+              <Link to="/#contact" state={homeState} className="nav-link">
                 ติดต่อเรา
-              </a>
+              </Link>
             </nav>
           )}
           <div className="flex items-center gap-2">
@@ -137,7 +190,8 @@ const Layout = () => {
             <div className="hidden items-center gap-2 sm:flex">{accountControls}</div>
             {!workspace && (
               <button
-                className="icon-button lg:hidden"
+                ref={navigationTrigger}
+                className="icon-button xl:hidden"
                 aria-label={mobileOpen ? 'ปิดเมนู' : 'เปิดเมนู'}
                 aria-expanded={mobileOpen}
                 aria-controls="public-mobile-navigation"
@@ -152,17 +206,25 @@ const Layout = () => {
           <nav
             id="public-mobile-navigation"
             aria-label="เมนูบนมือถือ"
-            className="space-y-2 border-t border-line bg-white p-5 lg:hidden"
+            className="space-y-2 border-t border-line bg-white p-5 xl:hidden"
           >
-            <a href="/#rooms" onClick={closeMobile} className="sidebar-link">
+            <Link to="/#rooms" state={homeState} onClick={closeMobile} className="sidebar-link">
               ห้องพัก
-            </a>
-            <a href="/#facilities" onClick={closeMobile} className="sidebar-link">
+            </Link>
+            <Link
+              to="/#facilities"
+              state={homeState}
+              onClick={closeMobile}
+              className="sidebar-link"
+            >
               สิ่งอำนวยความสะดวก
-            </a>
-            <a href="/#contact" onClick={closeMobile} className="sidebar-link">
+            </Link>
+            <Link to="/#rules" state={homeState} onClick={closeMobile} className="sidebar-link">
+              ข้อกำหนดการอยู่อาศัย
+            </Link>
+            <Link to="/#contact" state={homeState} onClick={closeMobile} className="sidebar-link">
               ติดต่อเรา
-            </a>
+            </Link>
             <div className="flex flex-wrap gap-2 border-t border-line pt-3">{accountControls}</div>
           </nav>
         )}
@@ -173,7 +235,7 @@ const Layout = () => {
         </p>
       )}
       {workspace ? (
-        <div className="min-h-[calc(100vh-80px)] bg-soft/70">
+        <div className="workspace-shell min-h-[calc(100vh-80px)] bg-white">
           {mobileOpen && (
             <button
               className="fixed inset-x-0 bottom-0 top-20 z-30 bg-navy/25 lg:hidden"
@@ -183,11 +245,11 @@ const Layout = () => {
           )}
           <aside
             id="workspace-navigation"
-            className={`${mobileOpen ? 'translate-x-0' : '-translate-x-full'} fixed bottom-0 left-0 top-20 z-30 flex w-[270px] flex-col border-r border-line bg-white transition-transform lg:translate-x-0`}
+            className={`${mobileOpen ? 'translate-x-0' : '-translate-x-full'} workspace-sidebar fixed bottom-0 left-0 top-20 z-30 flex w-[270px] flex-col border-r border-line bg-white transition-transform lg:translate-x-0`}
             aria-label="เมนูส่วนตัว"
             inert={!mobileOpen && isMobile ? '' : undefined}
           >
-            <div className="border-b border-line p-5">
+            <div className="sidebar-identity border-b border-line p-5">
               <p className="text-xs text-muted">
                 {user?.role === 'ADMIN' ? 'ระบบบริหารหอพัก' : 'พื้นที่ส่วนตัวของคุณ'}
               </p>
@@ -195,19 +257,37 @@ const Layout = () => {
                 {dormitory?.name || 'DORMIFY'}
               </p>
             </div>
-            <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-              {menus.map(({ to, label, icon: Icon, ready, end }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={end}
-                  onClick={closeMobile}
-                  className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="flex-1">{label}</span>
-                  {!ready && <span className="shrink-0 text-[10px] text-muted">ยังไม่พัฒนา</span>}
-                </NavLink>
+            <nav
+              className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3"
+              aria-label="เมนูส่วนตัวตามหมวดหมู่"
+            >
+              {menuGroups.map((group) => (
+                <div key={group || 'overview'}>
+                  {group && (
+                    <h2 className="sidebar-group-label mb-1 px-3 text-xs font-medium text-muted">
+                      {group}
+                    </h2>
+                  )}
+                  <div className="space-y-1">
+                    {menus
+                      .filter((menu) => menu.group === group)
+                      .map(({ to, label, icon: Icon, ready, end }) => (
+                        <NavLink
+                          key={to}
+                          to={to}
+                          end={end}
+                          onClick={closeMobile}
+                          className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span className="flex-1">{label}</span>
+                          {!ready && (
+                            <span className="shrink-0 text-[10px] text-muted">ยังไม่พัฒนา</span>
+                          )}
+                        </NavLink>
+                      ))}
+                  </div>
+                </div>
               ))}
             </nav>
             <div className="space-y-2 border-t border-line p-4">
@@ -230,7 +310,10 @@ const Layout = () => {
               </Link>
             </div>
           </aside>
-          <main id="main-content" className="min-w-0 px-5 py-7 sm:px-8 lg:ml-[270px] lg:px-10">
+          <main
+            id="main-content"
+            className="workspace-content min-w-0 px-5 py-7 sm:px-8 lg:ml-[270px] lg:px-10"
+          >
             <div className="mx-auto max-w-6xl">
               <div className="mb-6 flex items-center gap-2 text-xs text-muted">
                 <span>{roleName(user?.role)}</span>
@@ -259,12 +342,15 @@ const Layout = () => {
                 </p>
               </div>
               <div className="flex flex-wrap items-start gap-6 py-4 text-sm text-muted">
-                <a href="/#rooms" className="hover:text-brand">
+                <Link to="/#rooms" state={homeState} className="hover:text-brand">
                   ห้องพัก
-                </a>
-                <a href="/#contact" className="hover:text-brand">
+                </Link>
+                <Link to="/#contact" state={homeState} className="hover:text-brand">
                   ติดต่อเรา
-                </a>
+                </Link>
+                <Link to="/#rules" state={homeState} className="hover:text-brand">
+                  ข้อกำหนดการอยู่อาศัย
+                </Link>
                 <Link to={user ? dashboardPath : '/login'} className="hover:text-brand">
                   พื้นที่ส่วนตัว
                 </Link>

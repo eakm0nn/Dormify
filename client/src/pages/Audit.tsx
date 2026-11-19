@@ -1,9 +1,20 @@
 import { useState } from 'react';
-import { useApiResource } from '../hooks/useApiResource';
+import { useHistoryResource } from '../hooks/useHistoryResource';
 import type { Audit as Log } from '../types/operations';
 import { thaiDate } from '../utils/format';
 import { Heading, OperationForm, Table } from '../components/OperationUI';
 const labels: Record<string, string> = {
+  UPLOAD_ROOM_PHOTO: 'เพิ่มรูปห้อง',
+  DELETE_ROOM_PHOTO: 'ลบรูปห้อง',
+  SAVE_AMENITIES: 'บันทึกสิ่งอำนวยความสะดวก',
+  CORRECT_METER: 'แก้ไขเลขมิเตอร์',
+  REPLACE_METER: 'เปลี่ยนมิเตอร์',
+  ADJUST_INVOICE: 'ปรับยอดหรือออกใบลดหนี้',
+  REFUND_CREDIT: 'คืนเงินตามใบลดหนี้',
+  CLOSEOUT_LEASE: 'ปิดยอดสัญญา',
+  SETTLE_CLOSEOUT: 'รับหรือคืนยอดปิดสัญญา',
+  AMEND_LEASE: 'แก้วันสิ้นสุดสัญญา',
+  SUCCESSOR_LEASE: 'เตรียมสัญญาต่ออายุหรือย้ายห้อง',
   REGISTER: 'สมัครสมาชิก',
   LOGIN: 'เข้าสู่ระบบ',
   LOGOUT: 'ออกจากระบบ',
@@ -36,7 +47,7 @@ const labels: Record<string, string> = {
 };
 const Audit = () => {
   const [query, setQuery] = useState('');
-  const resource = useApiResource<Log[]>('/api/operations/audit' + query, 'โหลดประวัติไม่ได้');
+  const resource = useHistoryResource<Log>('audit', 'โหลดประวัติไม่ได้', query);
   return (
     <>
       <Heading
@@ -44,7 +55,7 @@ const Audit = () => {
         description="รายการสำคัญที่เริ่มบันทึกตั้งแต่เปิดฟังก์ชันนี้ ไม่สร้างประวัติย้อนหลัง ไม่มีรหัสผ่าน Token หรือภาพหลักฐานในบันทึก"
       />
       <OperationForm
-        title="ค้นหาประวัติ (ล่าสุดไม่เกิน 500 รายการ)"
+        title="ค้นหาประวัติทั้งหมด"
         fields={[
           { name: 'search', label: 'ชื่อผู้ทำหรือคำค้น' },
           { name: 'from', label: 'ตั้งแต่', type: 'date' },
@@ -59,6 +70,7 @@ const Audit = () => {
         loading={resource.loading}
         error={resource.error}
         onRetry={resource.refresh}
+        remote={resource.remote}
         columns={[
           {
             title: 'วันเวลา',

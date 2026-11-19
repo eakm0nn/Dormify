@@ -6,6 +6,7 @@ const { Prisma, fail, id, text, date, decimal, choice, audit, notify, leaseAcces
 const router = express.Router();
 router.use(authenticate);
 const admin = authorize('ADMIN');
+const { total: invoiceTotal } = require('../lib/invoice-totals');
 
 router.get('/maintenance', route(async (req, res) => res.json(await prisma.maintenanceRequest.findMany({ where: req.user.role === 'ADMIN' ? {} : { lease: { tenant: { userId: req.user.userId } } }, include: { room: true, lease: { select: { contractNo: true } } }, orderBy: { id: 'desc' } }))));
 router.post('/maintenance', route(async (req, res) => {
@@ -73,16 +74,21 @@ router.get('/reports', admin, route(async (req, res) => {
     if (to < from) fail(400, 'วันสิ้นสุดรายงานต้องไม่อยู่ก่อนวันเริ่ม');
     const times = { gte: new Date(from.getTime() - 7 * 3600000), lt: new Date(to.getTime() + 17 * 3600000) };
     const dates = { gte: from, lt: new Date(to.getTime() + 86400000) };
-    const [receipts, expenses, depositReceived, depositRefunded, outstanding, totalRooms, vacantRooms, activeLeases, openRepairs] = await Promise.all([
+    const [receipts, expenses, depositReceived, depositRefunded, outstanding, totalRooms, vacantRooms, activeLeases, openRepairs, creditRefunds, closedMovements, closedOutstanding] = await Promise.all([
         prisma.invoicePayment.aggregate({ where: { status: 'CONFIRMED', reviewedAt: times, settlement: { isNot: null } }, _sum: { amount: true } }),
         prisma.expense.aggregate({ where: { expenseDate: dates }, _sum: { amount: true } }),
         prisma.depositEntry.aggregate({ where: { kind: 'RECEIPT', createdAt: times }, _sum: { amount: true } }),
         prisma.depositEntry.aggregate({ where: { kind: 'REFUND', createdAt: times }, _sum: { amount: true } }),
-        prisma.invoice.aggregate({ where: { status: 'ISSUED' }, _sum: { totalAmount: true } }),
+        prisma.invoice.findMany({ where: { status: 'ISSUED' }, include: { adjustments: true } }),
         prisma.room.count(), prisma.room.count({ where: { isActive: true, isAvailable: true } }),
         prisma.lease.count({ where: { status: 'ACTIVE' } }), prisma.maintenanceRequest.count({ where: { status: { not: 'RESOLVED' } } }),
+        prisma.invoiceAdjustment.aggregate({ where: { refundedAt: times }, _sum: { amount: true } }),
+        prisma.leaseCloseout.aggregate({ where: { settledAt: times }, _sum: { balance: true } }),
+        prisma.leaseCloseout.aggregate({ where: { settledAt: null, balance: { gt: 0 } }, _sum: { balance: true } }),
     ]);
     const value = item => item || new Prisma.Decimal(0);
-    res.json({ receipts: value(receipts._sum.amount), expenses: value(expenses._sum.amount), operatingBalance: value(receipts._sum.amount).sub(value(expenses._sum.amount)), depositReceived: value(depositReceived._sum.amount), depositRefunded: value(depositRefunded._sum.amount), depositMovement: value(depositReceived._sum.amount).sub(value(depositRefunded._sum.amount)), outstanding: value(outstanding._sum.totalAmount), totalRooms, vacantRooms, activeLeases, openRepairs });
+    const netReceipts = value(receipts._sum.amount).add(value(creditRefunds._sum.amount)).add(value(closedMovements._sum.balance));
+    const owed = outstanding.reduce((sum, row) => sum.add(invoiceTotal(row)), value(closedOutstanding._sum.balance));
+    res.json({ receipts: netReceipts, grossReceipts: value(receipts._sum.amount), creditRefunds: value(creditRefunds._sum.amount).abs(), closeoutMovement: value(closedMovements._sum.balance), expenses: value(expenses._sum.amount), operatingBalance: netReceipts.sub(value(expenses._sum.amount)), depositReceived: value(depositReceived._sum.amount), depositRefunded: value(depositRefunded._sum.amount), depositMovement: value(depositReceived._sum.amount).sub(value(depositRefunded._sum.amount)), outstanding: owed, totalRooms, vacantRooms, activeLeases, openRepairs });
 }));
 module.exports = router;

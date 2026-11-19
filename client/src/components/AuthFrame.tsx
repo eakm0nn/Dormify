@@ -47,7 +47,7 @@ const AuthFrame = ({
             เริ่มต้นด้วยบัญชีของคุณเอง
           </p>
         </section>
-        <section className="surface mx-auto w-full max-w-md p-6 sm:p-9">
+        <section className="surface auth-panel mx-auto w-full max-w-md p-6 sm:p-9">
           <p className="eyebrow mb-2">DORMIFY</p>
           <h1 className="text-2xl">{title}</h1>
           <p className="mb-7 mt-2 text-sm text-muted">{description}</p>

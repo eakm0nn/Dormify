@@ -42,6 +42,7 @@ export interface Options {
   bookings: { id: number; roomId: number; userId: number; room: Room; user: { name: string } }[];
 }
 export interface Policy {
+  autoBilling?: boolean;
   id: number;
   holdHours: number;
   depositMonths: number;
@@ -55,6 +56,7 @@ export interface Rate {
   sourceReference: string;
 }
 export interface Reading {
+  rawValue?: string | null;
   id: number;
   roomId: number;
   utilityType: string;
@@ -63,6 +65,8 @@ export interface Reading {
   room: Room;
 }
 export interface InvoiceItem {
+  periodStart?: string | null;
+  periodEnd?: string | null;
   id: number;
   itemType: string;
   quantity: string;
@@ -73,6 +77,15 @@ export interface InvoiceItem {
   sourceReference: string | null;
 }
 export interface Invoice {
+  amountDue?: string;
+  adjustments?: {
+    id: number;
+    amount: string;
+    reason: string;
+    refundedAt: string | null;
+    refundEligible?: boolean | null;
+  }[];
+  settlement?: { invoiceId: number } | null;
   id: number;
   invoiceNo: string;
   leaseId: number;

@@ -4,7 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const { validateDatabaseUrl } = require('../../src/lib/database-config');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env'), quiet: true });
 
-const models = ['user', 'authSession', 'property', 'room', 'booking', 'payment', 'complaint', 'tenantProfile', 'lease', 'leaseOccupant', 'utilityRate', 'meterReading', 'invoice', 'invoiceItem', 'invoicePayment', 'paymentProof', 'invoiceSettlement', 'depositEntry', 'maintenanceRequest', 'expense', 'announcement', 'notification', 'auditLog', 'rentalPolicy'];
+const models = ['user', 'authSession', 'property', 'room', 'booking', 'payment', 'complaint', 'tenantProfile', 'lease', 'leaseOccupant', 'utilityRate', 'meterReading', 'invoice', 'invoiceItem', 'invoicePayment', 'paymentProof', 'invoiceSettlement', 'depositEntry', 'maintenanceRequest', 'expense', 'announcement', 'notification', 'auditLog', 'rentalPolicy', 'roomPhoto', 'meterChange', 'leaseRevision', 'leaseCloseout', 'invoiceAdjustment', 'dormitoryInstallation'];
 const key = model => model === 'invoiceSettlement' ? 'invoiceId' : 'id';
 const digest = row => createHash('sha256').update(JSON.stringify(row)).digest('hex');
 
@@ -16,6 +16,7 @@ const createFixtureDatabase = async () => {
     const prisma = new PrismaClient();
     const scope = 'dormify-' + randomUUID().replaceAll('-', '');
     process.env.DORMIFY_FIXTURE_SCOPE = scope;
+    process.env.DORMIFY_INSTALLATION_KEY = scope;
     const suffix = `@${scope}.example.test`;
     const baseline = {};
     try {
@@ -44,6 +45,7 @@ const createFixtureDatabase = async () => {
                     const leaseIds = (await tx.lease.findMany({ where: { OR: [{ tenantId: { in: tenantIds } }, { room: ownedRoom }] }, select: { id: true } })).map(row => row.id);
                     const invoiceScope = { invoice: { leaseId: { in: leaseIds } } };
                     await tx.invoiceSettlement.deleteMany({ where: invoiceScope });
+                    await tx.invoiceAdjustment.deleteMany({ where: invoiceScope });
                     await tx.paymentProof.deleteMany({ where: { payment: invoiceScope } });
                     await tx.invoicePayment.deleteMany({ where: invoiceScope });
                     await tx.invoiceItem.deleteMany({ where: invoiceScope });
@@ -51,9 +53,13 @@ const createFixtureDatabase = async () => {
                     await tx.depositEntry.deleteMany({ where: { leaseId: { in: leaseIds } } });
                     await tx.maintenanceRequest.deleteMany({ where: { leaseId: { in: leaseIds } } });
                     await tx.leaseOccupant.deleteMany({ where: { leaseId: { in: leaseIds } } });
+                    await tx.leaseCloseout.deleteMany({ where: { leaseId: { in: leaseIds } } });
+                    await tx.leaseRevision.deleteMany({ where: { leaseId: { in: leaseIds } } });
                     await tx.lease.deleteMany({ where: { id: { in: leaseIds } } });
                     await tx.tenantProfile.deleteMany({ where: { id: { in: tenantIds } } });
                     await tx.meterReading.deleteMany({ where: { room: ownedRoom } });
+                    await tx.meterChange.deleteMany({ where: { room: ownedRoom } });
+                    await tx.roomPhoto.deleteMany({ where: { room: ownedRoom } });
                     await tx.utilityRate.deleteMany({ where: { createdBy: { in: userIds } } });
                     await tx.expense.deleteMany({ where: { recordedBy: { in: userIds } } });
                     await tx.announcement.deleteMany({ where: { createdBy: { in: userIds } } });
@@ -62,6 +68,7 @@ const createFixtureDatabase = async () => {
                     await tx.auditLog.deleteMany({ where: { OR: [{ fixtureScope: scope }, { actorId: { in: userIds } }] } });
                     await tx.booking.deleteMany({ where: { OR: [{ userId: { in: userIds } }, { room: ownedRoom }] } });
                     await tx.room.deleteMany({ where: ownedRoom });
+                    await tx.dormitoryInstallation.deleteMany({ where: { property: { ownerId: { in: userIds } } } });
                     await tx.property.deleteMany({ where: { ownerId: { in: userIds } } });
                     await tx.user.deleteMany({ where: { id: { in: userIds } } });
                 }, { timeout: 30000 });
@@ -69,7 +76,7 @@ const createFixtureDatabase = async () => {
             for (const model of models) {
                 const previous = baseline[model];
                 const rows = await prisma[model].findMany({ where: { [key(model)]: { in: previous.map(row => row.id) } }, orderBy: { [key(model)]: 'asc' } });
-                const current = rows.map(row => ({ id: row.id, digest: digest(row) }));
+                const current = rows.map(row => ({ id: row[key(model)], digest: digest(row) }));
                 if (JSON.stringify(current) !== JSON.stringify(previous)) {
                     throw new Error(`Pre-existing ${model} records changed during tests. Inspect before continuing.`);
                 }

@@ -5,6 +5,7 @@ const { randomBytes } = require('node:crypto');
 const { spawn } = require('node:child_process');
 const { once } = require('node:events');
 const bcrypt = require('bcryptjs');
+const sharp = require('sharp');
 const { createFixtureDatabase } = require('./helpers/mysql-fixtures');
 
 test('Dormitory operations: real MySQL and HTTP lifecycle', { timeout: 120000 }, async t => {
@@ -30,7 +31,7 @@ test('Dormitory operations: real MySQL and HTTP lifecycle', { timeout: 120000 },
     for (const name of Object.keys(users)) tokens[name] = (await request('/api/auth/login', 'POST', { email: users[name].email, password }, 'none')).token;
     const policy = { holdHours: 72, depositMonths: 1, dueDays: 5 };
     let room, booking, tenant, lease, invoice0, invoice1, transfer;
-    const year = 2404 + 400 * (parseInt(scope.slice(-4), 16) % 10);
+    const year = 1204 + 400 * (parseInt(scope.slice(-4), 16) % 2);
     const start = year + '-01-31', boundary = year + '-02-29', march = year + '-03-31';
     const paidDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     await t.test('Admin settings are versioned; User and unauthenticated writes fail', async () => {
@@ -137,12 +138,106 @@ test('Dormitory operations: real MySQL and HTTP lifecycle', { timeout: 120000 },
         const after = await op('/reports'); assert.equal(Number(after.expenses) - Number(before.expenses), 125.25);
         const logs = await op('/audit?search=ISSUE_INVOICE'); assert.ok(logs.some(log => log.entityId === invoice1.id)); assert.equal(JSON.stringify(logs).includes(password), false); assert.equal(logs.some(log => 'token' in log || 'data' in log), false);
     });
+    await t.test('Room photos are decoded, private metadata stripped, Admin-only and safely deleted', async () => {
+        const png = await sharp({ create: { width: 12, height: 8, channels: 3, background: '#12BDF4' } }).png().toBuffer();
+        const url = base + '/api/properties/rooms/' + room.id + '/photos';
+        const upload = (actor, body = png, mime = 'image/png') => fetch(url, { method: 'POST', headers: { Authorization: 'Bearer ' + tokens[actor], 'Content-Type': mime }, body });
+        assert.equal((await upload('alice')).status, 403); assert.equal((await upload('admin', Buffer.alloc(100))).status, 400);
+        assert.equal((await upload('admin', Buffer.from('<svg></svg>'), 'image/svg+xml')).status, 400);
+        const response = await upload('admin'); assert.equal(response.status, 201); const photo = await response.json();
+        assert.equal((await upload('admin')).status, 409);
+        const image = await fetch(base + photo.url); assert.equal(image.status, 200); assert.equal(image.headers.get('content-type'), 'image/webp');
+        const meta = await sharp(Buffer.from(await image.arrayBuffer())).metadata(); assert.equal(meta.width, 12); assert.equal(meta.exif, undefined);
+        const property = await request('/api/properties/' + room.propertyId); const publicRoom = property.rooms.find(r => r.id === room.id); assert.ok(publicRoom.images.includes(photo.url)); assert.equal('data' in publicRoom, false);
+        await request('/api/properties/rooms/' + room.id + '/amenities', 'PUT', { amenities: ['โต๊ะ', 'ตู้เสื้อผ้า', 'โต๊ะ'] });
+        assert.deepEqual((await request('/api/properties/' + room.propertyId)).rooms.find(r => r.id === room.id).amenities, ['โต๊ะ', 'ตู้เสื้อผ้า']);
+        await request('/api/properties/' + room.propertyId + '/amenities', 'PUT', { amenities: ['ที่จอดรถ'] }, 'alice', 403);
+        await request('/api/properties/' + room.propertyId + '/amenities', 'PUT', { amenities: ['ที่จอดรถ'] });
+        await request('/api/properties/rooms/' + room.id + '/photos/' + photo.id, 'DELETE'); assert.equal((await fetch(base + photo.url)).status, 404);
+    });
+    await t.test('Mid-cycle rates require exact readings; corrections and replacement retain cumulative units', async () => {
+        const activeLease = lease;
+        const mid = await op('/readings', 'POST', { roomId: room.id, utilityType: 'WATER', readingDate: year + '-03-15', value: '16' }, 'admin', 201);
+        await op('/readings/' + mid.id, 'PUT', { value: '17', reason: 'แก้เลขหน้าปัดก่อนออกบิล' });
+        const bill = await op('/invoices', 'POST', { leaseId: activeLease.id, cycleIndex: 2 }, 'admin', 201);
+        assert.equal(Number(bill.totalAmount), 3116.50); assert.equal(bill.items.filter(item => item.itemType === 'WATER').length, 2);
+        await op('/readings/' + mid.id, 'PUT', { value: '16', reason: 'ห้ามทับบิลเดิม' }, 'admin', 409);
+        const replacement = await op('/meter-replacements', 'POST', { roomId: room.id, utilityType: 'WATER', readingDate: year + '-04-05', oldClosing: '21', newOpening: '0', reason: 'เปลี่ยนเครื่องใหม่' }, 'admin', 201);
+        assert.equal(Number(replacement.value), 21); assert.equal(Number(replacement.offset), 21);
+        const after = await op('/readings', 'POST', { roomId: room.id, utilityType: 'WATER', readingDate: year + '-04-30', value: '10' }, 'admin', 201); assert.equal(Number(after.value), 31);
+        await op('/readings', 'POST', { roomId: room.id, utilityType: 'ELECTRICITY', readingDate: year + '-04-30', value: '160' }, 'admin', 201);
+        assert.ok((await op('/meter-changes')).some(row => row.kind === 'REPLACEMENT'));
+        await op('/meter-changes', 'GET', undefined, 'alice', 403);
+    });
+    await t.test('Credit notes preserve originals and refunds change cash reports exactly once', async () => {
+        const pending = await prisma.invoicePayment.findMany({ where: { invoiceId: invoice0.id, status: 'PENDING' } });
+        for (const payment of pending) await op('/payments/' + payment.id + '/review', 'POST', { status: 'REJECTED', reason: 'รายการซ้ำกับยอดที่ยืนยันแล้ว' });
+        const before = await op('/reports');
+        const credit = await op('/invoices/' + invoice0.id + '/adjustments', 'POST', { direction: 'CREDIT', amount: '10', reason: 'ส่วนลดที่ตกลงจริง' }, 'admin', 201);
+        const invoice = await op('/invoices/' + invoice0.id); assert.equal(Number(invoice.totalAmount), 3000); assert.equal(Number(invoice.amountDue), 2990);
+        await op('/adjustments/' + credit.id + '/refund', 'POST', { method: 'CASH' }); await op('/adjustments/' + credit.id + '/refund', 'POST', { method: 'CASH' });
+        assert.equal(Number(before.receipts) - Number((await op('/reports')).receipts), 10);
+        await op('/invoices/' + invoice1.id + '/adjustments', 'POST', { direction: 'CREDIT', amount: '100', reason: 'แก้ยอดผิดก่อนชำระ' }, 'admin', 201);
+        assert.equal(Number((await op('/invoices/' + invoice1.id)).amountDue), 3029.94);
+        await op('/invoices/' + invoice1.id + '/adjustments', 'POST', { direction: 'CREDIT', amount: '99999', reason: 'เกินยอด' }, 'admin', 400);
+    });
+    await t.test('Prorated closeout refunds overpayment, preserves invoices and links a successor lease', async () => {
+        const extra = await request('/api/properties/rooms', 'POST', { propertyId: room.propertyId, roomNumber: scope + '-close', capacity: 2, price: '2900', type: 'AC' }, 'admin', 201);
+        const toRoom = await request('/api/properties/rooms', 'POST', { propertyId: room.propertyId, roomNumber: scope + '-move', capacity: 2, price: '2900', type: 'AC' }, 'admin', 201);
+        const source = await op('/leases', 'POST', { contractNo: scope + '-close', roomId: extra.id, tenantId: tenant.id, startDate: '1504-01-31', signedDate: paidDate, monthlyRent: '2900', occupants: [] }, 'admin', 201);
+        await op('/leases/' + source.id + '/activate', 'POST', {});
+        const bill = await op('/invoices', 'POST', { leaseId: source.id, cycleIndex: 0 }, 'admin', 201);
+        const pay = await op('/payments', 'POST', { invoiceId: bill.id, amount: '2900', method: 'CASH', paidDate }, 'admin', 201); await op('/payments/' + pay.id + '/review', 'POST', { status: 'CONFIRMED' });
+        for (const [utilityType, price, initial, last] of [['WATER','2','10','20'],['ELECTRICITY','4','100','110']]) {
+            await op('/rates', 'POST', { utilityType, unitPrice: price, effectiveFrom: '1504-01-31', sourceReference: scope }, 'admin', 201);
+            for (const [readingDate,value] of [['1504-01-31',initial],['1504-02-15',last]]) await op('/readings', 'POST', { roomId: extra.id, utilityType, readingDate, value }, 'admin', 201);
+        }
+        await op('/rates', 'POST', { utilityType: 'WATER', unitPrice: '3', effectiveFrom: '1504-02-07', sourceReference: scope }, 'admin', 201);
+        await op('/readings', 'POST', { roomId: extra.id, utilityType: 'WATER', readingDate: '1504-02-07', value: '15' }, 'admin', 201);
+        await op('/leases/' + source.id + '/amend', 'POST', { endDate: '1504-03-31', reason: 'แก้กำหนดตามเอกสาร' });
+        const successor = await op('/leases/' + source.id + '/successor', 'POST', { kind:'MOVE', roomId:toRoom.id, contractNo:scope+'-next', startDate:'1504-02-15', signedDate:paidDate, monthlyRent:'2900', reason:'ย้ายห้องตามข้อตกลง' }, 'admin', 201);
+        await op('/leases/' + successor.id + '/activate', 'POST', {}, 'admin', 409);
+        const input = { checkoutDate: '1504-02-15', reason: 'ย้ายออกกลางรอบ' };
+        const preview = await op('/leases/' + source.id + '/closeout-preview', 'POST', input); assert.equal(Number(preview.rentDue),1500); assert.equal(Number(preview.utilitiesDue),65); assert.equal(Number(preview.balance),-1335);
+        await op('/leases/' + source.id + '/closeout', 'POST', {...input,expectedBalance:'0'}, 'admin', 409);
+        const closeout = await op('/leases/' + source.id + '/closeout', 'POST', input, 'admin', 201);
+        assert.equal((await op('/leases/' + source.id + '/closeout', 'POST', input, 'admin', 201)).id,closeout.id);
+        assert.equal((await op('/invoices/' + bill.id)).totalAmount,bill.totalAmount);
+        assert.equal((await op('/closeouts','GET',undefined,'bob')).length,0);
+        const before = await op('/reports');
+        await op('/closeouts/' + closeout.id + '/settle','POST',{amount:'100',method:'CASH'},'admin',400);
+        await op('/closeouts/' + closeout.id + '/settle','POST',{amount:'1335',method:'CASH'}); await op('/closeouts/' + closeout.id + '/settle','POST',{amount:'1335',method:'CASH'});
+        assert.equal(Number(before.receipts)-Number((await op('/reports')).receipts),1335);
+        await op('/invoices','POST',{leaseId:source.id,cycleIndex:1},'admin',409);
+        await op('/leases/' + successor.id + '/activate', 'POST', {});
+        assert.equal((await prisma.room.findUnique({where:{id:extra.id}})).isAvailable,true);
+        assert.ok((await op('/leases/' + source.id + '/revisions','GET',undefined,'alice')).length>=2);
+    });
+    await t.test('Prepayment discounts cannot be refunded again; postpayment refunds serialize once', async () => {
+        const discount = await prisma.invoiceAdjustment.findFirst({ where: { invoiceId: invoice1.id } });
+        assert.equal(discount.refundEligible, false);
+        const payment = await op('/payments', 'POST', { invoiceId: invoice1.id, amount: '3029.94', method: 'CASH', paidDate }, 'admin', 201);
+        await op('/payments/' + payment.id + '/review', 'POST', { status: 'CONFIRMED' });
+        await op('/adjustments/' + discount.id + '/refund', 'POST', { method: 'CASH' }, 'admin', 409);
+        const credit = await op('/invoices/' + invoice1.id + '/adjustments', 'POST', { direction: 'CREDIT', amount: '10', reason: 'ลดหลังรับเงินจริง' }, 'admin', 201);
+        assert.equal(credit.refundEligible, true);
+        const before = await op('/reports'); let requests;
+        await prisma.$transaction(async tx => {
+            await tx.$queryRaw`SELECT id FROM Lease WHERE id = ${lease.id} FOR UPDATE`;
+            requests = [op('/adjustments/' + credit.id + '/refund', 'POST', { method: 'CASH' }), op('/adjustments/' + credit.id + '/refund', 'POST', { method: 'CASH' })];
+            await new Promise(resolve => setTimeout(resolve, 200));
+        });
+        await Promise.all(requests);
+        assert.equal(await prisma.auditLog.count({ where: { entityType: 'InvoiceAdjustment', entityId: credit.id, action: 'REFUND_CREDIT' } }), 1);
+        assert.equal(Number(before.receipts) - Number((await op('/reports')).receipts), 10);
+    });
     await t.test('Deposit receipt/refund separated from income, full amount and idempotent', async () => {
         const body = { leaseId: lease.id, kind: 'RECEIPT', amount: '3000', method: 'CASH' }, before = await op('/reports');
         await op('/deposits', 'POST', { ...body, amount: '100' }, 'admin', 409);
         const receipt = await op('/deposits', 'POST', body, 'admin', 201); assert.equal((await op('/deposits', 'POST', body, 'admin', 201)).id, receipt.id);
         await op('/deposits', 'POST', { ...body, kind: 'REFUND' }, 'admin', 409);
-        await op('/leases/' + lease.id + '/end', 'POST', {}); assert.equal((await prisma.room.findUnique({ where: { id: room.id } })).isAvailable, true);
+        await op('/leases/' + lease.id + '/end', 'POST', {}, 'admin', 400);
+        await op('/leases/' + lease.id + '/end', 'POST', { checkoutDate: year + '-04-30', reason: 'test final closeout' }, 'admin', 201); assert.equal((await prisma.room.findUnique({ where: { id: room.id } })).isAvailable, true);
         const refund = await op('/deposits', 'POST', { ...body, kind: 'REFUND' }, 'admin', 201); assert.equal((await op('/deposits', 'POST', { ...body, kind: 'REFUND' }, 'admin', 201)).id, refund.id);
         assert.equal(await prisma.depositEntry.count({ where: { leaseId: lease.id } }), 2);
         const after = await op('/reports'); assert.equal(Number(after.receipts), Number(before.receipts)); assert.equal(Number(after.depositReceived) - Number(before.depositReceived), 3000); assert.equal(Number(after.depositRefunded) - Number(before.depositRefunded), 3000);
@@ -158,5 +253,114 @@ test('Dormitory operations: real MySQL and HTTP lifecycle', { timeout: 120000 },
         await prisma.user.update({ where: { id: users.alice.id }, data: { role: 'ADMIN' } });
         await op('/leases/' + draft.id + '/activate', 'POST', {}, 'admin', 409);
         await prisma.user.update({ where: { id: users.alice.id }, data: { role: 'USER' } });
+    });
+    await t.test('Utility closeout allocation requires Admin evidence, valid amounts and immutable snapshots', async () => {
+        const ownRoom = await request('/api/properties/rooms', 'POST', { propertyId: room.propertyId, roomNumber: scope + '-utility', capacity: 2, price: '2900', type: 'AC' }, 'admin', 201);
+        const ownLease = await op('/leases', 'POST', { contractNo: scope + '-utility', roomId: ownRoom.id, tenantId: tenant.id, startDate: '1704-01-31', signedDate: paidDate, monthlyRent: '2900', occupants: [] }, 'admin', 201);
+        await op('/leases/' + ownLease.id + '/activate', 'POST', {});
+        for (const utilityType of ['WATER', 'ELECTRICITY']) {
+            await op('/rates', 'POST', { utilityType, unitPrice: '2', effectiveFrom: '1704-01-31', sourceReference: scope }, 'admin', 201);
+            for (const [readingDate, value] of [['1704-01-31','0'],['1704-02-15','10'],['1704-02-29','20']]) await op('/readings', 'POST', { roomId: ownRoom.id, utilityType, readingDate, value }, 'admin', 201);
+        }
+        const invoice = await op('/invoices', 'POST', { leaseId: ownLease.id, cycleIndex: 1 }, 'admin', 201);
+        const credit = await op('/invoices/' + invoice.id + '/adjustments', 'POST', { direction: 'CREDIT', itemType: 'WATER', amount: '30', reason: 'actual meter correction' }, 'admin', 201);
+        const input = { checkoutDate: '1704-02-15', reason: 'test manual allocation' }, url = '/leases/' + ownLease.id;
+        const pending = await op(url + '/closeout-preview', 'POST', input);
+        assert.equal(pending.details.allocation[0].requiresManual, true);
+        await op(url + '/closeout', 'POST', input, 'admin', 409);
+        await op(url + '/closeout-preview', 'POST', input, 'alice', 403);
+        const allocation = { adjustmentId: credit.id, amount: '5', reason: 'verified actual meter usage', reference: '1704-01-31=0;1704-02-15=10' };
+        for (const invalid of [{ ...allocation, amount: '31' }, { ...allocation, amount: '25' }, { ...allocation, amount: '-1' }, { ...allocation, reason: '' }, { ...allocation, reference: '' }, { ...allocation, adjustmentId: credit.id + 100000 }]) await op(url + '/closeout-preview', 'POST', { ...input, utilityAdjustments: [invalid] }, 'admin', 400);
+        await op(url + '/closeout-preview', 'POST', { ...input, utilityAdjustments: [allocation, allocation] }, 'admin', 400);
+        const zero = await op(url + '/closeout-preview', 'POST', { ...input, utilityAdjustments: [{ ...allocation, amount: '0' }] }); assert.equal(Number(zero.details.adjustmentTotal), 0);
+        const payload = { ...input, utilityAdjustments: [allocation] }, preview = await op(url + '/closeout-preview', 'POST', payload);
+        assert.equal(Number(preview.balance), 1535); assert.equal(preview.details.allocation[0].reference, allocation.reference);
+        await op(url + '/closeout', 'POST', payload, 'admin', 400);
+        await op(url + '/closeout', 'POST', { ...payload, expectedBalance: '1534' }, 'admin', 409);
+        const closed = await op(url + '/closeout', 'POST', { ...payload, expectedBalance: preview.balance }, 'admin', 201);
+        assert.equal(Number(closed.balance), 1535); assert.equal(closed.details.allocation[0].manual, true); assert.equal(closed.details.allocation[0].reason, allocation.reason);
+        assert.equal(Number((await prisma.invoiceAdjustment.findUnique({ where: { id: credit.id } })).amount), -30);
+        assert.equal((await op(url + '/closeout', 'POST', { ...payload, utilityAdjustments: [{ ...allocation, amount: '0' }] }, 'admin', 201)).id, closed.id);
+    });
+    await t.test('Automatic billing issues only due cycles once and reports missing actual readings', async () => {
+        await op('/billing-runs','POST',{},'alice',403);
+        const result = await op('/billing-runs','POST',{}); assert.ok(Array.isArray(result.issued)); assert.ok(Array.isArray(result.waiting));
+        const count = await prisma.invoice.count({where:{lease:{tenantId:tenant.id}}});
+        await op('/billing-runs','POST',{}); assert.equal(await prisma.invoice.count({where:{lease:{tenantId:tenant.id}}}),count);
+        const autoRoom = await request('/api/properties/rooms', 'POST', { propertyId: room.propertyId, roomNumber: scope + '-auto', capacity: 2, price: '2000', type: 'AC' }, 'admin', 201);
+        const autoLease = await op('/leases', 'POST', { contractNo: scope + '-auto', roomId: autoRoom.id, tenantId: tenant.id, startDate: paidDate, signedDate: paidDate, monthlyRent: '2000', occupants: [] }, 'admin', 201);
+        await op('/leases/' + autoLease.id + '/activate', 'POST', {});
+        await op('/policy','POST',{...policy,autoBilling:true},'admin',201);
+        const workerPrisma = require('../src/lib/prisma'); t.after(() => workerPrisma.$disconnect());
+        await require('../src/lib/auto-billing').tickBilling();
+        assert.equal(await prisma.invoice.count({where:{leaseId:autoLease.id}}),1);
+        await require('../src/lib/auto-billing').tickBilling();
+        assert.equal(await prisma.invoice.count({where:{leaseId:autoLease.id}}),1);
+    });
+    await t.test('Closeout prorates full-month rent credits and preserves their original amounts', async () => {
+        const ownRoom = await request('/api/properties/rooms', 'POST', { propertyId: room.propertyId, roomNumber: scope + '-excess', capacity: 2, price: '2900', type: 'AC' }, 'admin', 201);
+        const ownLease = await op('/leases', 'POST', { contractNo: scope + '-excess', roomId: ownRoom.id, tenantId: tenant.id, startDate: '1504-01-31', signedDate: paidDate, monthlyRent: '2900', occupants: [] }, 'admin', 201);
+        await op('/leases/' + ownLease.id + '/activate', 'POST', {});
+        const invoice = await op('/invoices', 'POST', { leaseId: ownLease.id, cycleIndex: 0 }, 'admin', 201);
+        const payment = await op('/payments', 'POST', { invoiceId: invoice.id, amount: '2900', method: 'CASH', paidDate }, 'admin', 201);
+        await op('/payments/' + payment.id + '/review', 'POST', { status: 'CONFIRMED' });
+        await op('/invoices/' + invoice.id + '/adjustments', 'POST', { direction: 'CREDIT', amount: '2900', reason: 'ต้องตรวจจัดสรรส่วนลดทั้งเดือนก่อนปิดรายวัน' }, 'admin', 201);
+        for (const [utilityType, dates] of [['WATER', ['1504-01-31','1504-02-07','1504-02-15']], ['ELECTRICITY', ['1504-01-31','1504-02-15']]]) {
+            for (const readingDate of dates) await op('/readings', 'POST', { roomId: ownRoom.id, utilityType, readingDate, value: '0' }, 'admin', 201);
+        }
+        const input = { checkoutDate: '1504-02-15', reason: 'ตรวจกรณีลดเต็มเดือน' };
+        for (const utilityType of ['WATER', 'ELECTRICITY']) await op('/readings', 'POST', { roomId: ownRoom.id, utilityType, readingDate: '1504-02-29', value: '0' }, 'admin', 201);
+        const future = await op('/invoices', 'POST', { leaseId: ownLease.id, cycleIndex: 1 }, 'admin', 201);
+        const futureCredit = await op('/invoices/' + future.id + '/adjustments', 'POST', { direction: 'CREDIT', itemType: 'RENT', amount: '290', reason: 'future cycle discount' }, 'admin', 201);
+        await op('/invoices/' + invoice.id + '/adjustments', 'POST', { direction: 'CREDIT', itemType: 'WATER', amount: '1', reason: 'wrong category' }, 'admin', 400);
+        const preview = await op('/leases/' + ownLease.id + '/closeout-preview', 'POST', input);
+        assert.equal(Number(preview.balance), -2900);
+        assert.equal(Number(preview.details.adjustmentTotal), -1500);
+        assert.equal(preview.details.allocation[0].usedDays, 15);
+        assert.equal(preview.details.allocation[0].cycleDays, 29);
+        assert.equal(Number(preview.details.allocation.find(row => row.adjustmentId === futureCredit.id).applied), 0);
+        const closed = await op('/leases/' + ownLease.id + '/closeout', 'POST', { ...input, expectedBalance: preview.balance }, 'admin', 201);
+        assert.equal(Number(closed.balance), -2900);
+        assert.equal(Number((await prisma.invoiceAdjustment.findFirst({ where: { invoiceId: invoice.id } })).amount), -2900);
+        assert.equal((await prisma.lease.findUnique({ where: { id: ownLease.id } })).status, 'ENDED');
+    });
+    await t.test('All-history pagination passes 500 rows with fixed snapshot and user privacy', async () => {
+        const rows = Array.from({ length: 503 }, (_, index) => ({ actorId: users.admin.id, actorName: 'history fixture', action: 'TEST_HISTORY', entityType: 'Fixture', summary: scope + '-history-' + index, fixtureScope: scope }));
+        await prisma.auditLog.createMany({ data: rows });
+        const query = '/history/audit?search=' + scope + '-history-';
+        const first = await op(query + '&limit=500');
+        assert.equal(first.total, 503); assert.equal(first.items.length, 500); assert.equal(first.hasNext, true);
+        await prisma.auditLog.create({ data: { ...rows[0], summary: scope + '-history-new' } });
+        const tail = await op(query + '&limit=500&page=1&snapshot=' + first.snapshot);
+        assert.equal(tail.items.length, 3); assert.equal(tail.total, 503); assert.equal(tail.hasNext, false);
+        assert.equal(new Set([...first.items, ...tail.items].map(row => row.id)).size, 503);
+        assert.equal((await op(query + '&limit=500')).total, 504);
+        await op('/history/audit', 'GET', undefined, 'alice', 403);
+        await op('/history/toString', 'GET', undefined, 'admin', 404);
+        await op('/history/audit?limit=0', 'GET', undefined, 'admin', 400);
+        await op('/history/audit?from=2026-11-17&to=2026-11-16', 'GET', undefined, 'admin', 400);
+        const personal = await op('/history/notifications?limit=500', 'GET', undefined, 'alice');
+        assert.ok(personal.items.length); assert.ok(personal.items.every(row => row.userId === users.alice.id));
+        for (const name of ['announcements', 'meter-changes']) assert.ok(Array.isArray((await op('/history/' + name)).items));
+    });
+    await t.test('Proof submitted behind verification cannot replace verified evidence', async () => {
+        const autoLease = await prisma.lease.findUnique({ where: { contractNo: scope + '-auto' } });
+        const invoice = await prisma.invoice.findFirst({ where: { leaseId: autoLease.id } });
+        const payment = await op('/payments', 'POST', { invoiceId: invoice.id, method: 'TRANSFER', amount: invoice.totalAmount.toString(), paidDate }, 'alice', 201);
+        const png = await sharp({ create: { width: 8, height: 8, channels: 3, background: '#0769F4' } }).png().toBuffer();
+        const changed = await sharp({ create: { width: 8, height: 8, channels: 3, background: '#FFFFFF' } }).png().toBuffer();
+        const url = base + '/api/operations/payments/' + payment.id + '/proof';
+        const upload = body => fetch(url, { method: 'POST', headers: { Authorization: 'Bearer ' + tokens.alice, 'Content-Type': 'image/png' }, body });
+        assert.equal((await upload(png)).status, 201);
+        let review, lateUpload;
+        await prisma.$transaction(async tx => {
+            await tx.$queryRaw`SELECT id FROM Invoice WHERE id = ${invoice.id} FOR UPDATE`;
+            review = op('/payments/' + payment.id + '/review', 'POST', { status: 'CONFIRMED' });
+            await new Promise(resolve => setTimeout(resolve, 150));
+            lateUpload = upload(changed);
+            await new Promise(resolve => setTimeout(resolve, 150));
+        });
+        await review; assert.equal((await lateUpload).status, 409);
+        const proof = await prisma.paymentProof.findUnique({ where: { paymentId: payment.id } }); assert.deepEqual(proof.data, png);
     });
 });

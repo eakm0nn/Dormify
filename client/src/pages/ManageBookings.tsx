@@ -8,6 +8,7 @@ import api from '../services/api';
 import type { Booking } from '../types/api';
 import { thaiError } from '../utils/errors';
 import { bookingStatus, thaiDate } from '../utils/format';
+import { downloadCsv } from '../utils/csv';
 
 const ManageBookings = () => {
   const { refresh } = useDormitory();
@@ -18,6 +19,9 @@ const ManageBookings = () => {
     refresh: load,
   } = useApiResource<Booking[]>('/api/bookings/admin', 'ไม่สามารถโหลดรายการเช่าได้');
   const bookings = data ?? [];
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(bookings.length / 10)),
+    current = Math.min(page, pages - 1);
   const [error, setError] = useState('');
   const [updating, setUpdating] = useState(false);
   const [action, setAction] = useState<{ booking: Booking; status: string } | null>(null);
@@ -104,7 +108,7 @@ const ManageBookings = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {bookings.map((booking) => {
+                  {bookings.slice(current * 10, (current + 1) * 10).map((booking) => {
                     const status = bookingStatus(booking.status);
                     return (
                       <tr key={booking.id}>
@@ -173,6 +177,49 @@ const ManageBookings = () => {
                   })}
                 </tbody>
               </table>
+              <div className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
+                <p>
+                  หน้า {current + 1} / {pages} · {bookings.length} รายการ
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={current === 0}
+                    onClick={() => setPage(current - 1)}
+                  >
+                    ก่อนหน้า
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={current === pages - 1}
+                    onClick={() => setPage(current + 1)}
+                  >
+                    ถัดไป
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      downloadCsv(
+                        ['รายการ', 'ห้อง', 'ผู้ขอ', 'วันที่เริ่ม', 'วันที่สิ้นสุด', 'สถานะ'],
+                        bookings.map((row) => [
+                          row.id,
+                          row.room.roomNumber,
+                          row.user?.name || '',
+                          thaiDate(row.startDate),
+                          thaiDate(row.endDate),
+                          bookingStatus(row.status).label,
+                        ]),
+                        'dormify-bookings',
+                      )
+                    }
+                  >
+                    ส่งออก CSV
+                  </Button>
+                </div>
+              </div>
             </div>
           </section>
         )

@@ -1,18 +1,19 @@
 import { BedDouble, ChevronLeft, ChevronRight, X, ZoomIn } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { mediaUrl } from '../utils/media';
 
 const PropertyGallery = ({ images = [], name = 'ห้องพัก' }: { images?: string[]; name?: string }) => {
   const [current, setCurrent] = useState(0);
   const [failed, setFailed] = useState<Record<string, boolean>>({});
   const dialog = useRef<HTMLDialogElement>(null);
-  const usable = images.filter(Boolean);
+  const usable = images.filter(Boolean).map(mediaUrl);
   const index = usable.length ? current % usable.length : 0;
   const prev = () => setCurrent((value) => (value - 1 + usable.length) % usable.length);
   const next = () => setCurrent((value) => (value + 1) % usable.length);
   if (!usable.length)
     return (
-      <div className="room-art flex min-h-64 flex-col items-center justify-center rounded-2xl border border-line p-8 text-center">
-        <BedDouble className="h-16 w-16 stroke-[1.2] text-brand/40" />
+      <div className="room-art flex min-h-64 flex-col items-center justify-center rounded-lg border border-line p-8 text-center">
+        <BedDouble className="h-16 w-16 stroke-[1.2] text-brand/40" aria-hidden="true" />
         <p className="mt-4 text-sm text-muted">ยังไม่มีรูปภาพห้องพักนี้</p>
       </div>
     );
@@ -20,6 +21,9 @@ const PropertyGallery = ({ images = [], name = 'ห้องพัก' }: { imag
     <img
       src={usable[index]}
       alt={`${name} ภาพที่ ${index + 1}`}
+      width="1200"
+      height="750"
+      fetchPriority="high"
       className="h-full w-full object-contain"
       onError={() => setFailed((value) => ({ ...value, [usable[index]]: true }))}
     />
@@ -27,7 +31,7 @@ const PropertyGallery = ({ images = [], name = 'ห้องพัก' }: { imag
   return (
     <>
       <div className="surface overflow-hidden">
-        <div className="room-art relative flex h-64 items-center justify-center sm:h-80">
+        <div className="room-art relative flex aspect-[16/10] items-center justify-center">
           {failed[usable[index]] ? (
             <p className="text-sm text-muted">ไม่สามารถแสดงรูปภาพนี้ได้</p>
           ) : (
@@ -72,7 +76,13 @@ const PropertyGallery = ({ images = [], name = 'ห้องพัก' }: { imag
                 onClick={() => setCurrent(i)}
                 className={`h-14 w-20 shrink-0 overflow-hidden rounded-lg border-2 ${i === index ? 'border-brand' : 'border-line'}`}
               >
-                <img src={source} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={source}
+                  alt=""
+                  width="80"
+                  height="56"
+                  className="h-full w-full object-cover"
+                />
               </button>
             ))}
           </div>

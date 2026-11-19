@@ -1,5 +1,5 @@
 const express = require('express');
-const { randomUUID, createHash } = require('node:crypto');
+const { createHash } = require('node:crypto');
 const prisma = require('../lib/prisma');
 const authenticate = require('../middleware/authMiddleware');
 const authorize = require('../middleware/authorize');
@@ -13,19 +13,19 @@ const lockInvoice = (tx, invoiceId) => tx.$queryRaw`SELECT id FROM Invoice WHERE
 const utility = value => choice(value, ['WATER', 'ELECTRICITY']);
 const method = value => choice(value, ['CASH', 'TRANSFER']);
 const money = value => decimal(value, 2, '9999999999.99', true);
-const anchorDate = (start, index) => {
-    const month = start.getUTCMonth() + index, year = start.getUTCFullYear();
-    const last = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-    return new Date(Date.UTC(year, month, Math.min(start.getUTCDate(), last)));
-};
-const bangkokToday = () => date(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()));
+const { issueInvoice } = require('../lib/invoice-service');
+const { ensureUnbilled } = require('../lib/meter-validation');
+const { total: invoiceTotal, presentInvoice } = require('../lib/invoice-totals');
+router.post('/billing-runs', admin, route(async (req, res) => res.json(await require('../lib/auto-billing').runBilling(req.user))));
 
 router.get('/policy', admin, route(async (req, res) => res.json(await prisma.rentalPolicy.findFirst({ orderBy: { id: 'desc' } }))));
 router.post('/policy', admin, route(async (req, res) => {
     const { holdHours, depositMonths, dueDays } = req.body;
+    const autoBilling = req.body.autoBilling ?? false;
+    if (typeof autoBilling !== 'boolean') fail(400, 'ค่าออกบิลอัตโนมัติไม่ถูกต้อง');
     if (![holdHours, depositMonths, dueDays].every(Number.isSafeInteger) || holdHours < 1 || holdHours > 8760 || depositMonths < 0 || depositMonths > 120 || dueDays < 0 || dueDays > 365) fail(400, 'ค่านโยบายไม่อยู่ในช่วงที่กำหนด');
     res.status(201).json(await prisma.$transaction(async tx => {
-        const result = await tx.rentalPolicy.create({ data: { holdHours, depositMonths, dueDays, createdBy: req.user.userId } });
+        const result = await tx.rentalPolicy.create({ data: { holdHours, depositMonths, dueDays, autoBilling, createdBy: req.user.userId } });
         await audit(tx, req.user, 'CHANGE_POLICY', 'RentalPolicy', result.id, 'เปลี่ยนนโยบายสำหรับรายการใหม่เท่านั้น'); return result;
     }));
 }));
@@ -37,50 +37,25 @@ router.post('/rates', admin, route(async (req, res) => {
 router.get('/readings', admin, route(async (req, res) => res.json(await prisma.meterReading.findMany({ where: req.query.roomId ? { roomId: id(req.query.roomId) } : {}, include: { room: true }, orderBy: [{ readingDate: 'desc' }, { id: 'desc' }] }))));
 router.post('/readings', admin, route(async (req, res) => {
     const data = { roomId: id(req.body.roomId), utilityType: utility(req.body.utilityType), readingDate: date(req.body.readingDate), value: decimal(req.body.value, 3, '99999999999.999'), createdBy: req.user.userId };
+    if (!await require('../lib/installation').ensureRoom(data.roomId)) fail(404, 'ไม่พบห้องพักของหอแห่งนี้');
     res.status(201).json(await prisma.$transaction(async tx => {
         await lockRoom(tx, data.roomId);
-        if (!await tx.room.findUnique({ where: { id: data.roomId } })) fail(404, 'ไม่พบห้องพัก');
-        const previous = await tx.meterReading.findFirst({ where: { roomId: data.roomId, utilityType: data.utilityType }, orderBy: { readingDate: 'desc' } });
-        if (previous && (data.readingDate <= previous.readingDate || data.value.lt(previous.value))) fail(409, 'ต้องบันทึกวันที่ถัดจากเดิม และเลขมิเตอร์ต้องไม่ลดลง');
+        if (!await require('../lib/installation').ensureRoom(data.roomId, tx)) fail(404, 'ไม่พบห้องพัก');
+        await ensureUnbilled(tx, data.roomId, data.readingDate);
+        const previous = await tx.meterReading.findFirst({ where: { roomId: data.roomId, utilityType: data.utilityType, readingDate: { lt: data.readingDate } }, orderBy: { readingDate: 'desc' } });
+        const next = await tx.meterReading.findFirst({ where: { roomId: data.roomId, utilityType: data.utilityType, readingDate: { gt: data.readingDate } }, orderBy: { readingDate: 'asc' } });
+        data.rawValue = data.value; data.offset = previous?.offset || new Prisma.Decimal(0); data.value = data.rawValue.add(data.offset);
+        if ((previous && data.value.lt(previous.value)) || (next && data.value.gt(next.value)) || data.value.lt(0)) fail(409, 'เลขมิเตอร์ต้องอยู่ระหว่างเลขสะสมก่อนและหลัง');
         const row = await tx.meterReading.create({ data }); await audit(tx, req.user, 'RECORD_METER', 'MeterReading', row.id, 'บันทึกเลขมิเตอร์ตามวันที่จริง'); return row;
     }));
 }));
 
-router.get('/invoices', route(async (req, res) => res.json(await prisma.invoice.findMany({ where: req.user.role === 'ADMIN' ? {} : { lease: { tenant: { userId: req.user.userId } } }, include: { items: true, settlement: true }, orderBy: { id: 'desc' } }))));
-router.get('/invoices/:invoiceId', route(async (req, res) => res.json(await invoiceAccess(prisma, req.params.invoiceId, req.user))));
+router.get('/invoices', route(async (req, res) => res.json((await prisma.invoice.findMany({ where: req.user.role === 'ADMIN' ? {} : { lease: { tenant: { userId: req.user.userId } } }, include: { items: true, settlement: true, adjustments: true }, orderBy: { id: 'desc' } })).map(presentInvoice))));
+router.get('/invoices/:invoiceId', route(async (req, res) => res.json(presentInvoice(await invoiceAccess(prisma, req.params.invoiceId, req.user)))));
 router.post('/invoices', admin, route(async (req, res) => {
     const leaseId = id(req.body.leaseId), cycleIndex = req.body.cycleIndex;
     if (!Number.isSafeInteger(cycleIndex) || cycleIndex < 0 || cycleIndex > 1200) fail(400, 'ลำดับรอบบิลไม่ถูกต้อง');
-    const invoice = await prisma.$transaction(async tx => {
-        await lockLease(tx, leaseId);
-        const lease = await leaseAccess(tx, leaseId, req.user);
-        if (!['ACTIVE', 'ENDED'].includes(lease.status)) fail(409, 'ออกบิลได้เมื่อสัญญาเริ่มใช้งานแล้ว');
-        const periodStart = anchorDate(lease.startDate, cycleIndex), periodEnd = anchorDate(lease.startDate, cycleIndex + 1);
-        if (lease.endDate && periodStart >= lease.endDate) fail(409, 'รอบบิลเกินวันสิ้นสุดสัญญา');
-        if (lease.status === 'ENDED' && periodStart > lease.endedAt) fail(409, 'ไม่ออกบิลอนาคตของสัญญาที่จบแล้ว');
-        if (await tx.invoice.findUnique({ where: { leaseId_cycleIndex: { leaseId, cycleIndex } } })) fail(409, 'ออกบิลรอบนี้แล้ว');
-        const items = [{ itemType: 'RENT', quantity: new Prisma.Decimal(1), unitPrice: lease.monthlyRent, amount: lease.monthlyRent }];
-        // Rent is for the coming cycle. Utilities use exact readings for the preceding cycle.
-        if (cycleIndex > 0) {
-            const utilityStart = anchorDate(lease.startDate, cycleIndex - 1);
-            for (const utilityType of ['WATER', 'ELECTRICITY']) {
-                const readings = await tx.meterReading.findMany({ where: { roomId: lease.roomId, utilityType, readingDate: { in: [utilityStart, periodStart] } }, orderBy: { readingDate: 'asc' } });
-                if (readings.length !== 2) fail(409, 'เลขมิเตอร์ต้นและปลายรอบย้อนหลังยังไม่ครบ จึงยังออกบิลไม่ได้');
-                const rate = await tx.utilityRate.findFirst({ where: { utilityType, effectiveFrom: { lte: utilityStart } }, orderBy: [{ effectiveFrom: 'desc' }, { id: 'desc' }] });
-                if (!rate) fail(409, 'ยังไม่มีอัตราน้ำไฟที่มีผลตั้งแต่ต้นรอบ');
-                const changedMidCycle = await tx.utilityRate.count({ where: { utilityType, effectiveFrom: { gt: utilityStart, lt: periodStart } } });
-                if (changedMidCycle) fail(409, 'อัตราเปลี่ยนกลางรอบ ต้องตกลงวิธีแบ่งช่วงก่อน ไม่คำนวณประมาณให้เอง');
-                const quantity = readings[1].value.sub(readings[0].value);
-                if (quantity.lt(0)) fail(409, 'เลขมิเตอร์ปลายรอบน้อยกว่าต้นรอบ');
-                items.push({ itemType: utilityType, quantity, unitPrice: rate.unitPrice, amount: quantity.mul(rate.unitPrice).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP), openingValue: readings[0].value, closingValue: readings[1].value, sourceReference: rate.sourceReference });
-            }
-        }
-        const totalAmount = items.reduce((sum, item) => sum.add(item.amount), new Prisma.Decimal(0)); money(totalAmount.toFixed(2));
-        const dueDate = bangkokToday(); dueDate.setUTCDate(dueDate.getUTCDate() + lease.dueDaysSnapshot);
-        const row = await tx.invoice.create({ data: { invoiceNo: 'INV-' + randomUUID().slice(0, 18), leaseId, cycleIndex, periodStart, periodEnd, dueDate, dueDaysSnapshot: lease.dueDaysSnapshot, tenantNameSnapshot: lease.tenant.name, roomNumberSnapshot: lease.room.roomNumber, totalAmount, items: { create: items } }, include: { items: true } });
-        await audit(tx, req.user, 'ISSUE_INVOICE', 'Invoice', row.id, 'ออกบิลค่าเช่าล่วงหน้าและน้ำไฟย้อนหลัง เก็บอัตราเดิม');
-        await notify(tx, lease.tenant.userId, 'ใบแจ้งหนี้ใหม่', 'ใบแจ้งหนี้ ' + row.invoiceNo + ' พร้อมตรวจสอบแล้ว'); return row;
-    });
+    const invoice = await issueInvoice(leaseId, cycleIndex, req.user);
     res.status(201).json(invoice);
 }));
 
@@ -93,7 +68,8 @@ router.post('/payments', route(async (req, res) => {
         await lockInvoice(tx, invoiceId);
         const invoice = await invoiceAccess(tx, invoiceId, req.user);
         if (invoice.status !== 'ISSUED' || invoice.settlement) fail(409, 'ใบแจ้งหนี้นี้ชำระแล้ว');
-        if (!amount.eq(invoice.totalAmount)) fail(400, 'ต้องชำระเต็มยอดตามบิล ไม่มีการแบ่งชำระ');
+        if (await tx.leaseCloseout.count({ where: { leaseId: invoice.leaseId } })) fail(409, 'สัญญาปิดยอดแล้ว ให้ชำระตามรายการปิดยอด');
+        if (!amount.eq(invoiceTotal(invoice))) fail(400, 'ต้องชำระเต็มยอดตามบิล ไม่มีการแบ่งชำระ');
         const row = await tx.invoicePayment.create({ data: { invoiceId, method: paymentMethod, amount, paidDate, submittedBy: req.user.userId }, include: paymentInclude });
         await audit(tx, req.user, 'SUBMIT_PAYMENT', 'InvoicePayment', row.id, 'แจ้งชำระเงิน รอตรวจสอบ ไม่ถือเป็นรับเงินแล้ว'); return row;
     }); res.status(201).json(payment);
@@ -104,11 +80,11 @@ router.post('/payments/:paymentId/proof', express.raw({ type: ['image/png', 'ima
     const png = mime === 'image/png' && buffer.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) && buffer.subarray(12, 16).toString() === 'IHDR' && buffer.subarray(-8, -4).toString() === 'IEND';
     const jpeg = mime === 'image/jpeg' && buffer[0] === 255 && buffer[1] === 216 && buffer[2] === 255 && buffer[buffer.length - 2] === 255 && buffer[buffer.length - 1] === 217;
     if (!png && !jpeg) fail(400, 'ชนิดไฟล์กับเนื้อหาภาพไม่ตรงกัน');
+    const target = await prisma.invoicePayment.findUnique({ where: { id: paymentId } }); if (!target) fail(404, 'ไม่พบการชำระเงิน');
     const result = await prisma.$transaction(async tx => {
-        const target = await tx.invoicePayment.findUnique({ where: { id: paymentId } }); if (!target) fail(404, 'ไม่พบการชำระเงิน');
-        await lockInvoice(tx, target.invoiceId); await invoiceAccess(tx, target.invoiceId, req.user);
+        await lockInvoice(tx, target.invoiceId); const invoice = await invoiceAccess(tx, target.invoiceId, req.user);
         const payment = await tx.invoicePayment.findUnique({ where: { id: paymentId } });
-        if (payment.method !== 'TRANSFER' || payment.status !== 'PENDING') fail(409, 'แนบหลักฐานได้เฉพาะรายการโอนที่รอตรวจ');
+        if (payment.method !== 'TRANSFER' || payment.status !== 'PENDING' || invoice.settlement || invoice.status !== 'ISSUED') fail(409, 'แนบหลักฐานได้เฉพาะรายการโอนที่รอตรวจและบิลยังไม่ชำระ');
         const proof = await tx.paymentProof.upsert({ where: { paymentId }, create: { paymentId, data: buffer, mime, size: buffer.length, checksum: createHash('sha256').update(buffer).digest('hex') }, update: { data: buffer, mime, size: buffer.length, checksum: createHash('sha256').update(buffer).digest('hex') }, select: { id: true, size: true, mime: true } });
         await audit(tx, req.user, 'UPLOAD_PROOF', 'InvoicePayment', paymentId, 'แนบภาพหลักฐานส่วนตัว'); return proof;
     }); res.status(201).json(result);
@@ -127,10 +103,11 @@ router.post('/payments/:paymentId/review', admin, route(async (req, res) => {
         const payment = await tx.invoicePayment.findUnique({ where: { id: paymentId }, include: { proof: { select: { id: true } } } });
         const invoice = await invoiceAccess(tx, payment.invoiceId, req.user);
         if (payment.status === status) return { id: payment.id, status: payment.status };
-        if (payment.status !== 'PENDING' || invoice.settlement) fail(409, 'รายการนี้ถูกตรวจหรือบิลชำระแล้ว');
+        if (payment.status !== 'PENDING' || (status === 'CONFIRMED' && invoice.settlement)) fail(409, 'รายการนี้ถูกตรวจหรือบิลชำระแล้ว');
         if (status === 'CONFIRMED') {
             if (payment.method === 'TRANSFER' && !payment.proof) fail(409, 'ต้องมีหลักฐานโอนก่อนยืนยัน');
-            if (!payment.amount.eq(invoice.totalAmount)) fail(409, 'ยอดไม่ตรงบิล');
+            if (await tx.leaseCloseout.count({ where: { leaseId: invoice.leaseId } })) fail(409, 'สัญญาปิดยอดแล้ว ไม่รับเงินบิลเดิมซ้ำ');
+            if (!payment.amount.eq(invoiceTotal(invoice))) fail(409, 'ยอดไม่ตรงบิล');
             await tx.invoiceSettlement.create({ data: { invoiceId: invoice.id, paymentId, confirmedBy: req.user.userId } });
             await tx.invoice.update({ where: { id: invoice.id }, data: { status: 'PAID' } });
         }

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import Button from '../components/Button';
 import DormitoryForm from '../components/DormitoryForm';
 import PolicyPanel from '../components/PolicyPanel';
+import { AmenitiesForm } from '../components/RoomMedia';
 import { ErrorMessage, Loading } from '../components/Feedback';
 import { useDormitory } from '../context/DormitoryContext';
 
@@ -83,6 +84,13 @@ const AddProperty = () => {
         </section>
       )}
       <PolicyPanel />
+      {dormitory && (
+        <AmenitiesForm
+          target={'/api/properties/' + dormitory.id}
+          initial={dormitory.amenities || []}
+          onSaved={refresh}
+        />
+      )}
     </>
   );
 };
